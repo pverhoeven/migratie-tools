@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Laadt een migratiebestand (wordt gesourced door run.sh en local.sh).
+# Laadt een migratie (wordt gesourced door run.sh, local.sh en in-repo.sh). Een migratie
+# geef je op als pad naar een migratiebestand of als naam uit migraties/.
 #
 # Een migratiebestand migraties/<naam>.env bevat (minstens één transformatie):
 #   CRUFT_UPDATE=ja     cruft update: de template-service bijwerken naar de nieuwste
@@ -8,9 +9,19 @@
 #                       de commit van migratie-tools (docs/adr/0002)
 # De naam van het bestand is de naam van de migratie en van de branch.
 
-laad_migratie() {
-  local bestand="$1"
-  [ -f "$bestand" ] || { echo "migratiebestand niet gevonden: $bestand" >&2; exit 2; }
+laad_migratie() {  # <naam of pad>
+  local bestand="$1" root
+  root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  if [ ! -f "$bestand" ] && [ -f "$root/migraties/$1.env" ]; then
+    bestand="$root/migraties/$1.env"
+  fi
+  if [ ! -f "$bestand" ]; then
+    echo "migratie niet gevonden: $1" >&2
+    echo "geef een pad naar een migratiebestand, of een naam uit migraties/:" >&2
+    find "$root/migraties" -name '*.env' ! -name '_*' -exec basename {} .env \; | sort | sed 's/^/  /' >&2
+    echo "  (de voorbeeldmigraties staan in voorbeeld/, bv. $root/voorbeeld/cruft-update.env)" >&2
+    exit 2
+  fi
 
   MIGRATIE="$(basename "$bestand" .env)"
   if ! [[ "$MIGRATIE" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then

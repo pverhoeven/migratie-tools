@@ -34,11 +34,7 @@ if [ $# -lt 1 ]; then
   echo "gebruik: $0 [--verder] [--zonder-verify] <migratie> [<repo>]" >&2
   exit 2
 fi
-migratie="$1"
-if [ ! -f "$migratie" ] && [ -f "$ROOT/migraties/$migratie.env" ]; then
-  migratie="$ROOT/migraties/$migratie.env"
-fi
-laad_migratie "$migratie"
+laad_migratie "$1"
 repo="$(git -C "${2:-.}" rev-parse --show-toplevel)" || { echo "${2:-.} is geen git-repo" >&2; exit 2; }
 branch="migratie/$MIGRATIE"
 cd "$repo"
