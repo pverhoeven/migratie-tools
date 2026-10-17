@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Laat per template-service zien op welke template-versie hij zit en hoeveel
-# template-versies hij achterloopt (de achterstand). Wijzigt niets.
+# Laat per template-service zien op welke template-commit hij zit en hoeveel commits
+# op de hoofdlijn van het template hij achterloopt (de achterstand). Wijzigt niets.
 #
 # Gebruik: ./achterstand.sh                  alle services in GITLAB_GROUP (GitLab-API)
 #          ./achterstand.sh <repo> [<repo>...] lokale repo's
@@ -27,7 +27,7 @@ template_clone() {  # <url>
   echo "$dir"
 }
 
-# Schrijft "<service><TAB><versie><TAB><achterstand><TAB><nieuwste>" voor één .cruft.json.
+# Schrijft "<service><TAB><template-commit><TAB><achterstand><TAB><nieuwste>" voor één .cruft.json.
 meet() {  # <service> <.cruft.json>
   local service="$1" url commit tpl versie nieuwste achter
   url="$(jq -r .template "$2")"; commit="$(jq -r .commit "$2")"
@@ -37,10 +37,10 @@ meet() {  # <service> <.cruft.json>
   if ! git -C "$tpl" cat-file -e "$commit^{commit}" 2>/dev/null; then
     printf '%s\t%s\t%s\t%s\n' "$service" "${commit:0:7}" "?" "commit onbekend in template" >> "$uitvoer"; return
   fi
-  versie="$(git -C "$tpl" describe --tags "$commit" 2>/dev/null || git -C "$tpl" rev-parse --short "$commit")"
-  nieuwste="$(git -C "$tpl" tag --sort=-v:refname | head -1)"
-  achter="$(git -C "$tpl" tag --no-merged "$commit" | wc -l | tr -d ' ')"
-  printf '%s\t%s\t%s\t%s\n' "$service" "$versie" "$achter" "${nieuwste:-geen tags}" >> "$uitvoer"
+  versie="$(git -C "$tpl" log -1 --format='%h %cs' "$commit")"
+  nieuwste="$(git -C "$tpl" log -1 --format='%h %cs' HEAD)"
+  achter="$(git -C "$tpl" rev-list --count --first-parent "$commit..HEAD")"
+  printf '%s\t%s\t%s\t%s\n' "$service" "$versie" "$achter" "$nieuwste" >> "$uitvoer"
 }
 
 if [ $# -gt 0 ]; then
@@ -68,7 +68,7 @@ if [ ! -s "$uitvoer" ]; then
   echo "geen template-services gevonden"
   exit 0
 fi
-printf '%-40s %-20s %-11s %s\n' "service" "template-versie" "achterstand" "nieuwste"
+printf '%-40s %-20s %-11s %s\n' "service" "template-commit" "achterstand" "nieuwste"
 sort -t$'\t' -k3,3nr -k1,1 "$uitvoer" | while IFS=$'\t' read -r s v a n; do
   printf '%-40s %-20s %-11s %s\n' "$s" "$v" "$a" "$n"
 done

@@ -1,21 +1,20 @@
 #!/usr/bin/env bash
-# Voert de voorbeeldwijzigingen door in het template: elke voorbeeld/wijzigingen/<tag>.patch
-# wordt een commit met die tag (v1.1.0: actuator en health-probes, v1.2.0: Spring Boot
-# 3.5.7, logging op WARN en resources in de chart). Je kunt het template in
-# work/voorbeeld/template natuurlijk ook zelf wijzigen: commit en tag het dan.
+# Voert de voorbeeldwijzigingen door in het template: elke voorbeeld/wijzigingen/*.patch
+# wordt één commit op main, in volgorde (actuator en health-probes, Spring Boot 3.5.7,
+# logging op WARN, resources in de chart). Net als jullie template-repo: geen tags.
+# Je kunt het template in work/voorbeeld/template ook zelf wijzigen en committen.
 set -euo pipefail
 HIER="$(cd "$(dirname "$0")" && pwd)"
 TEMPLATE="$HIER/../work/voorbeeld/template"
 [ -d "$TEMPLATE/.git" ] || { echo "draai eerst voorbeeld/opzetten.sh" >&2; exit 1; }
 
 for patch in "$HIER"/wijzigingen/*.patch; do
-  tag="$(basename "$patch" .patch)"
-  if git -C "$TEMPLATE" rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
-    echo "$tag bestaat al"; continue
+  onderwerp="$(basename "$patch" .patch | sed 's/^[0-9]*-//; s/-/ /g')"
+  if grep -qxF "$onderwerp" <(git -C "$TEMPLATE" log --format=%s); then
+    echo "al doorgevoerd: $onderwerp"; continue
   fi
   git -C "$TEMPLATE" apply "$patch"
   git -C "$TEMPLATE" add -A
-  git -C "$TEMPLATE" -c user.name=voorbeeld -c user.email=voorbeeld@localhost commit -q -m "Template $tag"
-  git -C "$TEMPLATE" tag "$tag"
-  echo "template $tag aangemaakt"
+  git -C "$TEMPLATE" -c user.name=voorbeeld -c user.email=voorbeeld@localhost commit -q -m "$onderwerp"
+  echo "template gewijzigd: $onderwerp"
 done

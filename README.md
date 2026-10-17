@@ -9,7 +9,7 @@ Begrippen staan in [GLOSSARY.md](GLOSSARY.md), besluiten in [docs/adr](docs/adr)
 ```
 run.sh                 één migratie over een GitLab-groep (standaard dry-run)
 local.sh               lokaal: kloont services naar ./work en draait de migratie
-achterstand.sh         per template-service: template-versie en achterstand
+achterstand.sh         per template-service: template-commit en achterstand
 repo-runner.sh         draait één migratie binnen één service
 migraties/<naam>.env   de migraties; <naam> wordt de branch migratie/<naam>
 transformaties/        template-update.sh, recept.sh
@@ -21,7 +21,7 @@ voorbeeld/             een voorbeeld-template met twee services om mee te oefene
 
 Een migratie bestaat uit een template-update en/of één OpenRewrite-recept, gevolgd
 door de controle `verify` (build en tests). Elke transformatie commit haar eigen
-wijzigingen; de template-update maakt één commit per template-versie.
+wijzigingen; de template-update maakt één commit per template-commit.
 
 ## Voorbereiding
 
@@ -35,15 +35,16 @@ cp config.env.example config.env   # GitLab- en Maven-instellingen
 
 ## Een migratie maken
 
-Kopieer `migraties/_voorbeeld.env` naar `migraties/<naam>.env` en pin alles vast:
+Kopieer `migraties/_voorbeeld.env` naar `migraties/<naam>.env`:
 
 ```bash
-TEMPLATE_VERSION=v1.4.0                          # template-versie (tag)
+TEMPLATE_UPDATE=ja                               # naar de nieuwste stand van het template
 RECEPT=local.migratietools.SpringBoot35          # en/of één recept uit recepten/
 ```
 
 Commit het bestand: een echte run draait alleen vanaf een schone werkmap en zet de
-commit van migratie-tools in de PR.
+commit van migratie-tools in de PR. Geef de migratie een naam die past bij wat er
+gebeurt, bv. `template-2026-10` of `spring-boot-3.5`.
 
 ## Recepten
 
@@ -60,7 +61,7 @@ De versie van `rewrite-maven-plugin` staat in `recepten/pom.xml` en moet bij de
 ## Lokaal draaien
 
 ```bash
-./local.sh migraties/template-v1.4.0.env ~/code/service-a ~/code/service-b
+./local.sh migraties/template-2026-10.env ~/code/service-a ~/code/service-b
 git -C work/service-a log -p origin/HEAD..HEAD
 ```
 
@@ -70,10 +71,13 @@ niet meegenomen. Met `--zonder-verify` (vóór het migratiebestand) sla je de bu
 
 ## Template-updates en conflicten
 
-De template-update loopt de template-versies één voor één af en merget elk bestand
-3-way (basis = vorige template-versie, ours = de service, theirs = de volgende
-template-versie). Bij een conflict stopt hij bij die versie, met conflictmarkers in de
-bestanden (inclusief de basis), zodat je ze in je IDE kunt oplossen.
+De template-update doet hetzelfde als `cruft update`: van de template-commit in
+`.cruft.json` naar de nieuwste commit van het template, met de context van de service.
+Alleen loopt hij de commits van het template één voor één af en merget hij elk bestand
+3-way (basis = vorige stand van het template, ours = de service, theirs = de volgende
+stand). Bij een conflict stopt hij bij die template-commit, met conflictmarkers in de
+bestanden (inclusief de basis), zodat je ze in je IDE kunt oplossen. Elke
+template-commit wordt een eigen commit in de service.
 
 ## Handwerk nodig
 
@@ -81,10 +85,10 @@ Een service met de uitkomst "Handwerk nodig" (conflict of rode build) krijgt gee
 Maak hem lokaal af:
 
 ```bash
-./local.sh migraties/template-v1.4.0.env <git-url-van-de-service>   # stopt bij het conflict
+./local.sh migraties/template-2026-10.env <git-url-van-de-service>   # stopt bij het conflict
 # los de conflicten op in work/<service> (of repareer de build)
-./local.sh --verder migraties/template-v1.4.0.env <service>          # commit en gaat verder
-git -C work/<service> push -u origin migratie/template-v1.4.0
+./local.sh --verder migraties/template-2026-10.env <service>          # commit en gaat verder
+git -C work/<service> push -u origin migratie/template-2026-10
 ```
 
 Open daarna zelf de MR, met de labels `migratie` en `<naam van de migratie>`.
@@ -93,9 +97,9 @@ Open daarna zelf de MR, met de labels `migratie` en `<naam van de migratie>`.
 ## Over een hele GitLab-groep (multi-gitter)
 
 ```bash
-./run.sh migraties/template-v1.4.0.env                                  # dry-run
-./run.sh migraties/template-v1.4.0.env --go --repo-include 'service-(a|b)'
-./run.sh migraties/template-v1.4.0.env --go                             # de rest
+./run.sh migraties/template-2026-10.env                                  # dry-run
+./run.sh migraties/template-2026-10.env --go --repo-include 'service-(a|b)'
+./run.sh migraties/template-2026-10.env --go                             # de rest
 ```
 
 Een herhaalde run slaat services over die al een branch `migratie/<naam>` hebben.
@@ -116,8 +120,8 @@ uitkomst per service, met de werklijst (Handwerk nodig) bovenaan.
 ./achterstand.sh ~/code/service-a      # of lokale repo's
 ```
 
-Toont per template-service op welke template-versie hij zit en hoeveel template-versies
-hij achterloopt, de grootste achterstand bovenaan. Handig vóór je een nieuwe
+Toont per template-service op welke template-commit hij zit en hoeveel commits van het
+template hij achterloopt, de grootste achterstand bovenaan. Handig vóór je een nieuwe
 template-migratie start: services die ver achterlopen krijgen meer kans op conflicten.
 
 ## Tips

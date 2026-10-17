@@ -4,9 +4,9 @@
 #
 # Gebruik: ./run.sh <migratiebestand> [--go] [--zonder-verify] [extra multi-gitter flags]
 # Voorbeelden:
-#   ./run.sh migraties/template-v1.4.0.env
-#   ./run.sh migraties/template-v1.4.0.env --repo-include 'payments-.*'
-#   ./run.sh migraties/template-v1.4.0.env --go
+#   ./run.sh migraties/template-2026-10.env
+#   ./run.sh migraties/template-2026-10.env --repo-include 'payments-.*'
+#   ./run.sh migraties/template-2026-10.env --go
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -60,7 +60,7 @@ if [ "$go" -eq 1 ] && [ "$ZONDER_VERIFY" = "1" ]; then
 fi
 
 transformaties=""
-[ -n "${TEMPLATE_VERSION:-}" ] && transformaties+="- template-update naar \`$TEMPLATE_VERSION\`"$'\n'
+[ -n "${TEMPLATE_UPDATE:-}" ] && transformaties+="- template-update naar de nieuwste stand van het template (één commit per template-commit)"$'\n'
 [ -n "${RECEPT:-}" ] && transformaties+="- recept \`$RECEPT\`"$'\n'
 
 args=(run "$ROOT/repo-runner.sh"

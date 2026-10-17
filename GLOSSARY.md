@@ -13,7 +13,7 @@ het template gegenereerd.
 _Avoid_: project, applicatie, repo (als het om de scope gaat)
 
 **Template-service**:
-Een service die uit het template is gegenereerd en de template-versies volgt.
+Een service die uit het template is gegenereerd en de template-standen volgt.
 _Avoid_: cruft-service, gegenereerde service
 
 **Uitsluitlijst**:
@@ -24,18 +24,20 @@ De repo's in de groep die nooit als service gelden, voor geen enkele migratie
 Het centrale cruft-template, in een eigen git-repo, waaruit template-services zijn
 gegenereerd. Het template is de bron van de bestanden die het genereert.
 
-**Template-versie**:
-Een tag in de repo van het template.
+**Template-stand**:
+Een commit op de hoofdlijn van de template-repo. De nieuwste template-stand is de
+laatste commit op de standaardbranch.
+_Avoid_: template-versie (er zijn geen tags)
 
 **Achterstand**:
-Het aantal template-versies dat een template-service achterloopt op de nieuwste
-template-versie.
+Het aantal template-standen dat een template-service achterloopt op de nieuwste
+template-stand.
 
 ### Hoe er gemigreerd wordt
 
 **Migratie**:
-Een vastgepinde wijziging van één of meer transformaties in een vaste volgorde, die
-over de services wordt uitgerold en per service hooguit één PR oplevert.
+Een wijziging van één of meer transformaties in een vaste volgorde, die over de
+services wordt uitgerold en per service hooguit één PR oplevert.
 _Avoid_: run, update, stappen-combinatie
 
 **Run**:
@@ -43,7 +45,8 @@ Eén uitvoering van een migratie over de services, als dry-run of echt. Een migr
 kan meerdere runs hebben.
 
 **Transformatie**:
-Het deel van een migratie dat een service wijzigt: een template-update of een recept.
+Het deel van een migratie dat een service wijzigt: een template-update (naar de
+nieuwste template-stand) of een recept.
 _Avoid_: stap
 
 **Recept**:

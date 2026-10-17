@@ -57,7 +57,7 @@ hervat() {  # <dest>
   fi
   [ -n "$(git -C "$dest" status --porcelain)" ] || return 0
   if ! git -C "$dest" diff --quiet HEAD -- .cruft.json 2>/dev/null; then
-    bericht="template: $(jq -r .checkout "$dest/.cruft.json") (conflict opgelost)"
+    bericht="template: $(jq -r '.commit[0:7]' "$dest/.cruft.json") (conflict opgelost)"
   else
     bericht="handmatige aanpassing"
   fi

@@ -26,29 +26,3 @@ index d1bc3e8..c6d374b 100644
 +    memory: 256Mi
 +  limits:
 +    memory: 512Mi
-diff --git a/{{cookiecutter.project_slug}}/pom.xml b/{{cookiecutter.project_slug}}/pom.xml
-index 5f230dd..f522a2a 100644
---- a/{{cookiecutter.project_slug}}/pom.xml
-+++ b/{{cookiecutter.project_slug}}/pom.xml
-@@ -7,7 +7,7 @@
-     <parent>
-         <groupId>org.springframework.boot</groupId>
-         <artifactId>spring-boot-starter-parent</artifactId>
--        <version>3.5.6</version>
-+        <version>3.5.7</version>
-         <relativePath/>
-     </parent>
- 
-diff --git a/{{cookiecutter.project_slug}}/src/main/resources/application.properties b/{{cookiecutter.project_slug}}/src/main/resources/application.properties
-index 518ecdf..666e698 100644
---- a/{{cookiecutter.project_slug}}/src/main/resources/application.properties
-+++ b/{{cookiecutter.project_slug}}/src/main/resources/application.properties
-@@ -1,7 +1,7 @@
- spring.application.name={{ cookiecutter.project_slug }}
- 
- # --- logging ---
--logging.level.root=INFO
-+logging.level.root=WARN
- 
- # --- server ---
- server.shutdown=graceful

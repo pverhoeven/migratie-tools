@@ -43,16 +43,16 @@ unset GITLAB_TOKEN
 if [ ! -f pom.xml ]; then
   uitkomst 10 "Niet van toepassing" "geen pom.xml"
 fi
-if [ -n "${TEMPLATE_VERSION:-}" ] && [ ! -f .cruft.json ]; then
+if [ -n "${TEMPLATE_UPDATE:-}" ] && [ ! -f .cruft.json ]; then
   uitkomst 10 "Niet van toepassing" "geen template-service (geen .cruft.json)"
 fi
 
 start="${BASIS:-$(git rev-parse HEAD)}"
 
 # Transformaties, in vaste volgorde: eerst het template, dan het recept.
-if [ -n "${TEMPLATE_VERSION:-}" ]; then
-  echo ">> transformatie: template naar $TEMPLATE_VERSION"
-  "$ROOT/transformaties/template-update.sh" || handwerk "template-update naar $TEMPLATE_VERSION mislukt"
+if [ -n "${TEMPLATE_UPDATE:-}" ]; then
+  echo ">> transformatie: template-update"
+  "$ROOT/transformaties/template-update.sh" || handwerk "template-update mislukt"
 fi
 if [ -n "${RECEPT:-}" ]; then
   echo ">> transformatie: recept $RECEPT"
@@ -72,4 +72,6 @@ fi
 if [ "$(git rev-parse HEAD)" = "$start" ]; then
   uitkomst 0 "Ongewijzigd"
 fi
-uitkomst 0 "Gewijzigd" "$(git rev-list --count "$start..HEAD") commit(s)"
+reden="$(git rev-list --count "$start..HEAD") commit(s)"
+if [ -n "${TEMPLATE_UPDATE:-}" ]; then reden+=", template $(jq -r '.commit[0:7]' .cruft.json)"; fi
+uitkomst 0 "Gewijzigd" "$reden"

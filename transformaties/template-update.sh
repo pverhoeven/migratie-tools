@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# Transformatie: een template-service bijwerken naar TEMPLATE_VERSION, één
-# template-versie per keer (docs/adr/0004). Per versie:
-#   - de vorige en de volgende versie genereren met de context uit .cruft.json
-#   - elk bestand 3-way mergen (basis = vorige versie, ours = service, theirs = volgende)
-#   - .cruft.json bijwerken en committen ("template: <versie>")
+# Transformatie: een template-service bijwerken naar de nieuwste commit van het
+# template, zoals `cruft update` dat doet, maar commit voor commit (docs/adr/0004).
+# Uitgangspunt is de commit in .cruft.json; het doel is de standaardbranch van het
+# template. Per commit op de hoofdlijn van het template:
+#   - de vorige en de volgende stand genereren met de context uit .cruft.json
+#   - elk bestand 3-way mergen (basis = vorige stand, ours = service, theirs = volgende)
+#   - .cruft.json bijwerken en committen ("template: <commit> <onderwerp>")
 # Bij het eerste conflict stopt de update, met diff3-conflictmarkers in de bestanden.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 . "$ROOT/lib/common.sh"
 
-: "${TEMPLATE_VERSION:?zet TEMPLATE_VERSION}"
 vereist git jq
 
 if git grep -qE '^(<<<<<<<|>>>>>>>)( |$)' -- . 2>/dev/null; then
@@ -22,28 +23,24 @@ trap 'rm -rf "$tmp"' EXIT
 
 git clone --quiet "$(jq -r .template .cruft.json)" "$tmp/template"
 tpl() { git -C "$tmp/template" "$@"; }
-versienaam() { tpl describe --tags --exact-match "$1" 2>/dev/null || tpl rev-parse --short "$1"; }
 
 huidig="$(jq -r .commit .cruft.json)"
-doel="$(tpl rev-parse --verify --quiet "$TEMPLATE_VERSION^{commit}")" \
-  || { reden "template-versie $TEMPLATE_VERSION bestaat niet"; exit 1; }
+doel="$(tpl rev-parse HEAD)"
 tpl cat-file -e "$huidig^{commit}" 2>/dev/null \
   || { reden "de template-commit $huidig van de service bestaat niet in het template"; exit 1; }
 
 if [ "$huidig" = "$doel" ] || tpl merge-base --is-ancestor "$doel" "$huidig"; then
-  echo "service zit al op $TEMPLATE_VERSION of verder"
+  echo "service is al bij met het template ($(tpl rev-parse --short "$doel"))"
   exit 0
 fi
 
-# De template-versies (tags) tussen huidig en doel, in volgorde, afgesloten met het doel.
-versies=()
-if tpl merge-base --is-ancestor "$huidig" "$doel"; then
-  while IFS= read -r c; do
-    if [ "$c" = "$doel" ] || [ -n "$(tpl tag --points-at "$c")" ]; then versies+=("$c"); fi
-  done < <(tpl rev-list --reverse --ancestry-path "$huidig..$doel")
-else
-  versies=("$doel")  # geen rechte lijn tussen de twee (bv. andere branch): in één keer
+# De commits op de hoofdlijn van het template sinds de huidige stand, oudste eerst.
+stappen=()
+while IFS= read -r c; do stappen+=("$c"); done < <(tpl rev-list --reverse --first-parent "$huidig..$doel")
+if ! tpl merge-base --is-ancestor "$huidig" "$doel"; then
+  stappen=("$doel")  # huidige stand ligt niet op de hoofdlijn: in één keer
 fi
+echo "template: ${#stappen[@]} commit(s) achter, naar $(tpl rev-parse --short "$doel")"
 
 render() {  # <commit> <uitvoermap> <context.json>
   rm -rf "$2"
@@ -52,11 +49,12 @@ render() {  # <commit> <uitvoermap> <context.json>
 
 : > "$tmp/leeg"
 vorige="$huidig"
-for versie in "${versies[@]}"; do
-  van="$(versienaam "$vorige")"; naar="$(versienaam "$versie")"
-  echo "-- template $van -> $naar"
+for stap in "${stappen[@]}"; do
+  van="$(tpl rev-parse --short "$vorige")"; naar="$(tpl rev-parse --short "$stap")"
+  onderwerp="$(tpl log -1 --format=%s "$stap")"
+  echo "-- template $van -> $naar: $onderwerp"
   render "$vorige" "$tmp/oud" "$tmp/oud.json"
-  render "$versie" "$tmp/nieuw" "$tmp/nieuw.json"
+  render "$stap" "$tmp/nieuw" "$tmp/nieuw.json"
 
   conflicten=()
   while IFS= read -r -d '' f; do
@@ -80,14 +78,15 @@ for versie in "${versies[@]}"; do
     fi
   done < <({ (cd "$tmp/oud" && find . -type f -print0); (cd "$tmp/nieuw" && find . -type f -print0); } | sort -zu)
 
-  jq --arg commit "$versie" --arg checkout "$naar" --slurpfile ctx "$tmp/nieuw.json" \
-    '.commit = $commit | .checkout = $checkout | .context = $ctx[0]' .cruft.json > "$tmp/cruft.json"
+  # Zoals cruft update: nieuwe commit en context; checkout blijft leeg (standaardbranch).
+  jq --arg commit "$stap" --slurpfile ctx "$tmp/nieuw.json" \
+    '.commit = $commit | .checkout = null | .context = $ctx[0]' .cruft.json > "$tmp/cruft.json"
   cp "$tmp/cruft.json" .cruft.json
 
   if [ ${#conflicten[@]} -gt 0 ]; then
-    reden "conflict bij template $naar: $(printf '%s, ' "${conflicten[@]}" | sed 's/, $//')"
+    reden "conflict bij template $naar ($onderwerp): $(printf '%s, ' "${conflicten[@]}" | sed 's/, $//')"
     exit 1
   fi
-  commit_alles "template: $naar"
-  vorige="$versie"
+  commit_alles "template: $naar $onderwerp"
+  vorige="$stap"
 done

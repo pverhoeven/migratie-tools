@@ -2,10 +2,10 @@
 # Laadt een migratiebestand (wordt gesourced door run.sh en local.sh).
 #
 # Een migratiebestand migraties/<naam>.env bevat (minstens één transformatie):
-#   TEMPLATE_VERSION  template-versie (tag) waarnaar bijgewerkt wordt
-#   RECEPT            naam van één OpenRewrite-recept uit recepten/
-# Alles is vastgepind: "laatste versie" mag niet (docs/adr/0002). Voor een recept
-# doet de commit van migratie-tools dat (receptcode en plugin-versie staan hier).
+#   TEMPLATE_UPDATE=ja  de template-service bijwerken naar de nieuwste stand van het
+#                       template, zoals `cruft update` (de commits leggen vast welke)
+#   RECEPT              naam van één OpenRewrite-recept uit recepten/; vastgepind door
+#                       de commit van migratie-tools (docs/adr/0002)
 # De naam van het bestand is de naam van de migratie en van de branch.
 
 laad_migratie() {
@@ -18,14 +18,18 @@ laad_migratie() {
   fi
 
   # Waarden horen uit het migratiebestand te komen, niet uit config.env of de shell.
-  unset TEMPLATE_VERSION RECEPT
+  unset TEMPLATE_UPDATE TEMPLATE_VERSION RECEPT
   set -a; . "$bestand"; set +a
   export MIGRATIE
 
-  if [ -z "${TEMPLATE_VERSION:-}" ] && [ -z "${RECEPT:-}" ]; then
-    echo "$bestand: zet TEMPLATE_VERSION en/of RECEPT" >&2; exit 2
+  if [ -n "${TEMPLATE_VERSION:-}" ]; then
+    echo "$bestand: TEMPLATE_VERSION bestaat niet meer; gebruik TEMPLATE_UPDATE=ja (altijd de nieuwste stand)" >&2; exit 2
   fi
-  case "${TEMPLATE_VERSION:-}" in
-    main|master|HEAD) echo "$bestand: TEMPLATE_VERSION moet een vaste versie zijn, geen '$TEMPLATE_VERSION'" >&2; exit 2 ;;
+  case "${TEMPLATE_UPDATE:-}" in
+    ""|ja) ;;
+    *) echo "$bestand: TEMPLATE_UPDATE moet 'ja' zijn of ontbreken" >&2; exit 2 ;;
   esac
+  if [ -z "${TEMPLATE_UPDATE:-}" ] && [ -z "${RECEPT:-}" ]; then
+    echo "$bestand: zet TEMPLATE_UPDATE=ja en/of RECEPT" >&2; exit 2
+  fi
 }
