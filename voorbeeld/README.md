@@ -7,7 +7,7 @@ die eruit gegenereerd zijn, om migraties lokaal mee te oefenen.
 voorbeeld/opzetten.sh          # template en services in work/voorbeeld/
 voorbeeld/wijzig-template.sh   # vier template-commits (zie wijzigingen/)
 ./achterstand.sh work/voorbeeld/services/*
-./local.sh voorbeeld/template-bijwerken.env \
+./local.sh voorbeeld/cruft-update.env \
     work/voorbeeld/services/bestel-service work/voorbeeld/services/klant-service
 ```
 
@@ -24,7 +24,7 @@ Conflicts…* en kies in `application.properties` een waarde (of haal de markers
 hand weg en doe `git add`). Ga daarna verder:
 
 ```bash
-./local.sh --verder voorbeeld/template-bijwerken.env klant-service
+./local.sh --verder voorbeeld/cruft-update.env klant-service
 ```
 
 Een migratie met een recept (uit `recepten/`) verwijdert de debug-regel uit de eigen

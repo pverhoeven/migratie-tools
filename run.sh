@@ -60,7 +60,7 @@ if [ "$go" -eq 1 ] && [ "$ZONDER_VERIFY" = "1" ]; then
 fi
 
 transformaties=""
-[ -n "${TEMPLATE_UPDATE:-}" ] && transformaties+="- template-update naar de nieuwste stand van het template (één commit per template-commit)"$'\n'
+[ -n "${CRUFT_UPDATE:-}" ] && transformaties+="- cruft update naar de nieuwste stand van het template (één commit per template-commit)"$'\n'
 [ -n "${RECEPT:-}" ] && transformaties+="- recept \`$RECEPT\`"$'\n'
 
 args=(run "$ROOT/repo-runner.sh"

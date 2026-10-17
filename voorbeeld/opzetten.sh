@@ -3,7 +3,7 @@
 #   template/            git-repo van het template (één commit op main, geen tags)
 #   services/bestel-service, services/klant-service
 #                        gegenereerd uit het template, elk met eigen aanpassingen erbovenop
-# Daarna: voorbeeld/wijzig-template.sh en ./local.sh voorbeeld/template-bijwerken.env ...
+# Daarna: voorbeeld/wijzig-template.sh en ./local.sh voorbeeld/cruft-update.env ...
 # (zie voorbeeld/README.md). Draai opnieuw om helemaal opnieuw te beginnen.
 set -euo pipefail
 HIER="$(cd "$(dirname "$0")" && pwd)"

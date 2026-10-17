@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Transformatie: een template-service bijwerken naar de nieuwste commit van het
-# template, zoals `cruft update` dat doet, maar commit voor commit (docs/adr/0004).
+# Transformatie cruft update: een template-service bijwerken naar de nieuwste commit
+# van het template. Doet wat `cruft update` doet, maar commit voor commit en met echte
+# git-conflicten; het commando `cruft update` zelf gebruiken we bewust niet (docs/adr/0004).
 # Uitgangspunt is de commit in .cruft.json; het doel is de standaardbranch van het
 # template. Per commit op de hoofdlijn van het template:
 #   - de vorige en de volgende stand genereren met de context uit .cruft.json
 #   - elk bestand 3-way mergen (basis = vorige stand, ours = service, theirs = volgende)
-#   - .cruft.json bijwerken en committen ("template: <commit> <onderwerp>")
+#   - .cruft.json bijwerken en committen ("cruft update: <commit> <onderwerp>")
 # Bij het eerste conflict stopt de update, met diff3-conflictmarkers in de bestanden.
 # De conflicten staan ook als echte git-conflicten in de index (basis, service,
 # template), zodat een IDE (bv. IntelliJ: Git > Resolve Conflicts) ze 3-way kan mergen.
@@ -42,7 +43,7 @@ while IFS= read -r c; do stappen+=("$c"); done < <(tpl rev-list --reverse --firs
 if ! tpl merge-base --is-ancestor "$huidig" "$doel"; then
   stappen=("$doel")  # huidige stand ligt niet op de hoofdlijn: in één keer
 fi
-echo "template: ${#stappen[@]} commit(s) achter, naar $(tpl rev-parse --short "$doel")"
+echo "${#stappen[@]} template-commit(s) achter, naar $(tpl rev-parse --short "$doel")"
 
 # Zet een conflict in de index zoals git dat bij een merge doet: stage 1 = basis,
 # 2 = service (ours), 3 = template (theirs). Een lege versie laat die stage weg.
@@ -111,6 +112,6 @@ for stap in "${stappen[@]}"; do
     reden "conflict bij template $naar ($onderwerp): $(printf '%s, ' "${conflicten[@]}" | sed 's/, $//')"
     exit 1
   fi
-  commit_alles "template: $naar $onderwerp"
+  commit_alles "cruft update: $naar $onderwerp"
   vorige="$stap"
 done

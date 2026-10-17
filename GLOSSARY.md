@@ -45,9 +45,14 @@ Eén uitvoering van een migratie over de services, als dry-run of echt. Een migr
 kan meerdere runs hebben.
 
 **Transformatie**:
-Het deel van een migratie dat een service wijzigt: een template-update (naar de
-nieuwste template-stand) of een recept.
+Het deel van een migratie dat een service wijzigt: een cruft update of een recept.
 _Avoid_: stap
+
+**Cruft update**:
+De transformatie die een template-service bijwerkt naar de nieuwste template-stand,
+zoals het commando `cruft update` dat doet, maar per template-stand en met echte
+git-conflicten.
+_Avoid_: template-update
 
 **Recept**:
 Een OpenRewrite-recept, in YAML of Java, dat in deze repo wordt beheerd.

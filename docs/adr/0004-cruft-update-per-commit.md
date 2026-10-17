@@ -1,9 +1,9 @@
-# Template-updates commit voor commit, met een eigen 3-way-merge
+# Cruft update commit voor commit, met een eigen 3-way-merge
 
-We gebruiken `cruft update` niet zelf. Die past alles sinds de template-commit in
+De transformatie heet cruft update, maar we roepen het commando `cruft update` niet aan. Dat commando past alles sinds de template-commit in
 `.cruft.json` toe als één patch en valt bij conflicten terug op `.rej`-bestanden, die
 niet in een merge-tool te openen zijn en bij een grote achterstand niet aan één
-wijziging te koppelen zijn. In plaats daarvan doet de template-update hetzelfde als
+wijziging te koppelen zijn. In plaats daarvan doet de transformatie hetzelfde als
 `cruft update` (zelfde startpunt, zelfde doel: de nieuwste stand van de standaardbranch,
 zelfde context), maar loopt hij de commits op de hoofdlijn van het template één voor één
 af: per commit worden de vorige en de volgende stand gegenereerd en wordt elk bestand

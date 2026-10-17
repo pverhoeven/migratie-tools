@@ -12,16 +12,16 @@ local.sh               lokaal: kloont services naar ./work en draait de migratie
 achterstand.sh         per template-service: template-commit en achterstand
 repo-runner.sh         draait één migratie binnen één service
 migraties/<naam>.env   de migraties; <naam> wordt de branch migratie/<naam>
-transformaties/        template-update.sh, recept.sh
+transformaties/        cruft-update.sh, recept.sh
 recepten/              Maven-module met de OpenRewrite-recepten (YAML en Java)
 controles/             verify.sh
 lib/                   hulpfuncties
 voorbeeld/             een voorbeeld-template met twee services om mee te oefenen
 ```
 
-Een migratie bestaat uit een template-update en/of één OpenRewrite-recept, gevolgd
+Een migratie bestaat uit een cruft update en/of één OpenRewrite-recept, gevolgd
 door de controle `verify` (build en tests). Elke transformatie commit haar eigen
-wijzigingen; de template-update maakt één commit per template-commit.
+wijzigingen; de cruft update maakt één commit per template-commit.
 
 ## Voorbereiding
 
@@ -33,7 +33,7 @@ Nodig: `git`, `jq`, [cruft](https://cruft.github.io/cruft/) 2.16.0, Java en Mave
 pipx install cruft==2.16.0
 ```
 
-Gebruik precies deze cruft-versie: de template-update gebruikt een interne functie van
+Gebruik precies deze cruft-versie: de cruft update gebruikt een interne functie van
 cruft (`lib/render-template.py`) en is alleen met 2.16.0 getest. Test een nieuwere versie
 eerst met het voorbeeld (`voorbeeld/README.md`) voordat je hem ophoogt.
 
@@ -46,7 +46,7 @@ cp config.env.example config.env   # GitLab- en Maven-instellingen
 Kopieer `migraties/_voorbeeld.env` naar `migraties/<naam>.env`:
 
 ```bash
-TEMPLATE_UPDATE=ja                               # naar de nieuwste stand van het template
+CRUFT_UPDATE=ja                                  # naar de nieuwste stand van het template
 RECEPT=local.migratietools.SpringBoot35          # en/of één recept uit recepten/
 ```
 
@@ -77,13 +77,15 @@ git -C work/service-a log -p origin/HEAD..HEAD
 `migratie/<naam>` en pusht nooit. Niet-gecommitte wijzigingen in je eigen repo worden
 niet meegenomen. Met `--zonder-verify` (vóór het migratiebestand) sla je de build over.
 
-## Template-updates en conflicten
+## cruft update en conflicten
 
-De template-update doet hetzelfde als `cruft update`: van de template-commit in
+De transformatie cruft update doet wat `cruft update` doet: van de template-commit in
 `.cruft.json` naar de nieuwste commit van het template, met de context van de service.
 Alleen loopt hij de commits van het template één voor één af en merget hij elk bestand
 3-way (basis = vorige stand van het template, ours = de service, theirs = de volgende
-stand). Bij een conflict stopt hij bij die template-commit, met conflictmarkers in de
+stand). Het commando `cruft update` zelf gebruiken we niet: dat past alles als één
+patch toe en geeft bij conflicten `.rej`-bestanden (zie docs/adr/0004). Bij een
+conflict stopt hij bij die template-commit, met conflictmarkers in de
 bestanden (inclusief de basis). De conflicten staan ook als echte git-conflicten in de
 index (basis, service, template), zodat je ze in je IDE 3-way kunt mergen. Elke
 template-commit wordt een eigen commit in de service.
