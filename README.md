@@ -25,9 +25,17 @@ wijzigingen; de template-update maakt één commit per template-commit.
 
 ## Voorbereiding
 
-Nodig: `git`, `jq`, [cruft](https://cruft.github.io/cruft/) (`pipx install cruft`),
-Java en Maven (of een `mvnw` in de service). Voor `run.sh` ook
+Nodig: `git`, `jq`, [cruft](https://cruft.github.io/cruft/) 2.16.0, Java en Maven
+(of een `mvnw` in de service). Voor `run.sh` ook
 [multi-gitter](https://github.com/lindell/multi-gitter).
+
+```bash
+pipx install cruft==2.16.0
+```
+
+Gebruik precies deze cruft-versie: de template-update gebruikt een interne functie van
+cruft (`lib/render-template.py`) en is alleen met 2.16.0 getest. Test een nieuwere versie
+eerst met het voorbeeld (`voorbeeld/README.md`) voordat je hem ophoogt.
 
 ```bash
 cp config.env.example config.env   # GitLab- en Maven-instellingen
