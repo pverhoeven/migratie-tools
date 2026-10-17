@@ -12,8 +12,8 @@
 laad_migratie() {  # <naam of pad>
   local bestand="$1" root
   root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-  if [ ! -f "$bestand" ] && [ -f "$root/migraties/$1.env" ]; then
-    bestand="$root/migraties/$1.env"
+  if [ ! -f "$bestand" ] && [ -f "$root/migraties/${1%.env}.env" ]; then
+    bestand="$root/migraties/${1%.env}.env"
   fi
   if [ ! -f "$bestand" ]; then
     echo "migratie niet gevonden: $1" >&2
