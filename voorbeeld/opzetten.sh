@@ -24,7 +24,7 @@ cruft_cmd() {
 cp -R "$HIER/template" "$DOEL/template"
 git -C "$DOEL/template" init -q -b main
 git -C "$DOEL/template" add -A
-git_v -C "$DOEL/template" commit -q -m "eerste versie van het template"
+git_v -C "$DOEL/template" commit -q -m "feat: eerste versie van het template"
 
 genereer() {  # <projectnaam>
   cruft_cmd create --no-input --output-dir "$DOEL/services" \
@@ -43,7 +43,7 @@ PY
 # bestel-service: aanpassingen die niet botsen met het template
 genereer "Bestel Service"
 s="$DOEL/services/bestel-service"
-git -C "$s" init -q -b main && git -C "$s" add -A && git_v -C "$s" commit -q -m "Gegenereerd uit het template"
+git -C "$s" init -q -b main && git -C "$s" add -A && git_v -C "$s" commit -q -m "chore: gegenereerd uit het template"
 printf 'bestel.max-items=10\n' >> "$s/src/main/resources/application.properties"
 vervang "$s/chart/values.yaml" "replicaCount: 1" "replicaCount: 3"
 vervang "$s/pom.xml" "    </dependencies>" "        <dependency>
@@ -64,14 +64,14 @@ public class Bestellingen {
     }
 }
 JAVA
-git -C "$s" add -A && git_v -C "$s" commit -q -m "Eigen aanpassingen: max-items, 3 replica's, validation, Bestellingen"
+git -C "$s" add -A && git_v -C "$s" commit -q -m "feat: max-items, 3 replica's, validation en Bestellingen"
 
 # klant-service: past de logging aan, die later ook in het template verandert
 genereer "Klant Service"
 s="$DOEL/services/klant-service"
-git -C "$s" init -q -b main && git -C "$s" add -A && git_v -C "$s" commit -q -m "Gegenereerd uit het template"
+git -C "$s" init -q -b main && git -C "$s" add -A && git_v -C "$s" commit -q -m "chore: gegenereerd uit het template"
 vervang "$s/src/main/resources/application.properties" "logging.level.root=INFO" "logging.level.root=DEBUG"
-git -C "$s" add -A && git_v -C "$s" commit -q -m "Eigen aanpassing: debug-logging"
+git -C "$s" add -A && git_v -C "$s" commit -q -m "chore: debug-logging"
 
 echo "voorbeeld opgezet in $DOEL"
 echo "volgende stap: $HIER/wijzig-template.sh"

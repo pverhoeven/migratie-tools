@@ -48,7 +48,7 @@ laad_migratie() {  # <naam of pad>
 # Commit het handwerk (opgeloste conflicten of een gerepareerde build) in de repo <dir>,
 # zodat de migratie verder kan. Gebruikt door local.sh en in-repo.sh met --verder.
 hervat() {  # <dir>
-  local dest="$1" bericht
+  local dest="$1" bericht msg
   if ! git -C "$dest" rev-parse --git-dir >/dev/null 2>&1; then
     echo "$dest is geen git-repo; draai de migratie eerst zonder --verder" >&2; return 1
   fi
@@ -67,11 +67,15 @@ hervat() {  # <dir>
     return 1
   fi
   [ -n "$(git -C "$dest" status --porcelain)" ] || return 0
-  if ! git -C "$dest" diff --quiet HEAD -- .cruft.json 2>/dev/null; then
-    bericht="cruft update: $(jq -r '.commit[0:7]' "$dest/.cruft.json") (conflict opgelost)"
+  msg="$(git -C "$dest" rev-parse --absolute-git-dir)/MIGRATIE_MSG"
+  if [ -f "$msg" ]; then
+    bericht="$(cat "$msg")"$'\n\n'"Conflict handmatig opgelost."
+  elif ! git -C "$dest" diff --quiet HEAD -- .cruft.json 2>/dev/null; then
+    bericht="chore(cruft): conflict opgelost ($(jq -r '.commit[0:7]' "$dest/.cruft.json"))"
   else
-    bericht="handmatige aanpassing"
+    bericht="fix(migratie): handmatige aanpassing voor $MIGRATIE"
   fi
   (cd "$dest" && commit_alles "$bericht")
-  echo "gecommit: $bericht"
+  rm -f "$msg"
+  echo "gecommit: ${bericht%%$'\n'*}"
 }

@@ -22,7 +22,11 @@ voorbeeld/             een voorbeeld-template met twee services om mee te oefene
 
 Een migratie bestaat uit een cruft update en/of één OpenRewrite-recept, gevolgd
 door de controle `verify` (build en tests). Elke transformatie commit haar eigen
-wijzigingen; de cruft update maakt één commit per template-commit.
+wijzigingen; de cruft update maakt één commit per template-commit. Alle commits zijn
+[conventional commits](https://www.conventionalcommits.org/): een template-commit
+`fix: logging op warn` wordt in de service `fix(cruft): logging op warn (777021d)`
+(geen conventional commit in het template: `chore(cruft): …`), een recept wordt
+`chore(recept): <recept>` en de PR-titel `chore(migratie): <migratie>`.
 
 ## Voorbereiding
 

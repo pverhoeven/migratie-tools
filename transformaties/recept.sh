@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Transformatie: één recept uit recepten/ draaien via de Maven-plugin en het resultaat
-# committen ("recept: <naam>"). De recepten zijn aan het begin van de run lokaal
+# committen ("chore(recept): <naam>"). De recepten zijn aan het begin van de run lokaal
 # geïnstalleerd; de plugin-versie staat in recepten/pom.xml.
 #
 # Uit het migratiebestand: RECEPT
@@ -26,5 +26,5 @@ fi
 # Build-output van de plugin hoort niet in de commit.
 "$ROOT/lib/opruimen.sh"
 if [ -n "$(git status --porcelain)" ]; then
-  commit_alles "recept: $RECEPT"
+  commit_alles "chore(recept): $RECEPT"
 fi

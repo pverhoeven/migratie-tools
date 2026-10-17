@@ -6,7 +6,8 @@
 # template. Per commit op de hoofdlijn van het template:
 #   - de vorige en de volgende stand genereren met de context uit .cruft.json
 #   - elk bestand 3-way mergen (basis = vorige stand, ours = service, theirs = volgende)
-#   - .cruft.json bijwerken en committen ("cruft update: <commit> <onderwerp>")
+#   - .cruft.json bijwerken en committen als conventional commit: het type van de
+#     template-commit met scope cruft, bv. "fix(cruft): logging op warn (777021d)"
 # Bij het eerste conflict stopt de update, met diff3-conflictmarkers in de bestanden.
 # De conflicten staan ook als echte git-conflicten in de index (basis, service,
 # template), zodat een IDE (bv. IntelliJ: Git > Resolve Conflicts) ze 3-way kan mergen.
@@ -57,6 +58,23 @@ markeer_conflict() {  # <pad> <basis> <service> <template>
   done
   printf '%s' "$info" | git update-index --index-info
 }
+
+# Commit-boodschap voor een template-commit: neemt het type over als de template-commit
+# een conventional commit is (feat: ..., fix(x)!: ...), anders chore.
+bericht_voor() {  # <commit>
+  local onderwerp patroon='^([a-z]+)(\([^)]*\))?(!?): (.*)$'
+  onderwerp="$(tpl log -1 --format=%s "$1")"
+  if [[ "$onderwerp" =~ $patroon ]]; then
+    printf '%s(cruft)%s: %s (%s)' "${BASH_REMATCH[1]}" "${BASH_REMATCH[3]}" "${BASH_REMATCH[4]}" "$(tpl rev-parse --short "$1")"
+  else
+    printf 'chore(cruft): %s (%s)' "$onderwerp" "$(tpl rev-parse --short "$1")"
+  fi
+}
+
+# Bij een conflict bewaren we de commit-boodschap (zoals git dat met MERGE_MSG doet),
+# zodat --verder de opgeloste stap met dezelfde boodschap commit.
+MSG_BESTAND="$(git rev-parse --git-dir)/MIGRATIE_MSG"
+rm -f "$MSG_BESTAND"
 
 render() {  # <commit> <uitvoermap> <context.json>
   rm -rf "$2"
@@ -109,9 +127,10 @@ for stap in "${stappen[@]}"; do
   cp "$tmp/cruft.json" .cruft.json
 
   if [ ${#conflicten[@]} -gt 0 ]; then
+    bericht_voor "$stap" > "$MSG_BESTAND"
     reden "conflict bij template $naar ($onderwerp): $(printf '%s, ' "${conflicten[@]}" | sed 's/, $//')"
     exit 1
   fi
-  commit_alles "cruft update: $naar $onderwerp"
+  commit_alles "$(bericht_voor "$stap")"
   vorige="$stap"
 done

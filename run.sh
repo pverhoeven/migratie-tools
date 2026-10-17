@@ -68,7 +68,7 @@ args=(run "$ROOT/repo-runner.sh"
   --group "$GITLAB_GROUP"
   --branch "migratie/$MIGRATIE"
   --manual-commit
-  --pr-title "Migratie: $MIGRATIE"
+  --pr-title "chore(migratie): $MIGRATIE"
   --pr-body "Automatisch aangemaakt door migratie-tools, migratie \`$MIGRATIE\` (migratie-tools $versie).
 
 ${transformaties}
