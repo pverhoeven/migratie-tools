@@ -27,6 +27,14 @@ hand weg en doe `git add`). Ga daarna verder:
 ./local.sh --verder voorbeeld/cruft-update.env klant-service
 ```
 
+Of in een eigen clone, zoals je dat met een project in IntelliJ zou doen:
+
+```bash
+git clone work/voorbeeld/services/klant-service /tmp/klant-service
+cd /tmp/klant-service
+/pad/naar/migratie-tools/in-repo.sh /pad/naar/migratie-tools/voorbeeld/cruft-update.env
+```
+
 Een migratie met een recept (uit `recepten/`) verwijdert de debug-regel uit de eigen
 klasse `Bestellingen` van bestel-service:
 

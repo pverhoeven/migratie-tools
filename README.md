@@ -9,6 +9,7 @@ Begrippen staan in [GLOSSARY.md](GLOSSARY.md), besluiten in [docs/adr](docs/adr)
 ```
 run.sh                 één migratie over een GitLab-groep (standaard dry-run)
 local.sh               lokaal: kloont services naar ./work en draait de migratie
+in-repo.sh             lokaal: draait de migratie in een bestaande clone (bv. in IntelliJ)
 achterstand.sh         per template-service: template-commit en achterstand
 repo-runner.sh         draait één migratie binnen één service
 migraties/<naam>.env   de migraties; <naam> wordt de branch migratie/<naam>
@@ -90,10 +91,41 @@ bestanden (inclusief de basis). De conflicten staan ook als echte git-conflicten
 index (basis, service, template), zodat je ze in je IDE 3-way kunt mergen. Elke
 template-commit wordt een eigen commit in de service.
 
+## In je eigen clone (en vanuit IntelliJ)
+
+Heb je de service al als project open, draai de migratie dan direct in die clone:
+
+```bash
+cd ~/code/service-a                        # schone werkmap, bijgewerkte main
+~/migratie-tools/in-repo.sh cruft-update   # naam (migraties/<naam>.env) of pad
+# conflict? los op in IntelliJ: Git → Resolve Conflicts…
+~/migratie-tools/in-repo.sh --verder cruft-update
+git push -u origin migratie/cruft-update   # en open de MR zelf
+```
+
+`in-repo.sh` maakt de branch `migratie/<naam>` vanaf je huidige commit en weigert bij
+een vuile werkmap (de controle draait alles terug wat de build wijzigt). Er wordt nooit
+gepusht.
+
+**Als External Tool in IntelliJ** (*Settings → Tools → External Tools → +*), twee keer:
+
+| | Migratie starten | Migratie verder |
+|---|---|---|
+| Program | `/pad/naar/migratie-tools/in-repo.sh` | `/pad/naar/migratie-tools/in-repo.sh` |
+| Arguments | `$Prompt$` | `--verder $Prompt$` |
+| Working directory | `$ProjectFileDir$` | `$ProjectFileDir$` |
+
+Daarna staan ze onder *Tools → External Tools* (en kun je er een sneltoets aan hangen
+via *Keymap*). IntelliJ vraagt de naam van de migratie, toont de uitvoer in een
+console en ververst daarna de bestanden; conflicten verschijnen meteen onder
+*Merge Conflicts*. Vindt IntelliJ `cruft`, `jq` of `mvn` niet, zet dan in `config.env`
+bijvoorbeeld `PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"`.
+
 ## Handwerk nodig
 
 Een service met de uitkomst "Handwerk nodig" (conflict of rode build) krijgt geen PR.
-Maak hem lokaal af:
+Maak hem lokaal af, in je eigen clone met `in-repo.sh` (zie hierboven) of in een verse
+clone met `local.sh`:
 
 ```bash
 ./local.sh migraties/template-2026-10.env <git-url-van-de-service>   # stopt bij het conflict

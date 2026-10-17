@@ -41,36 +41,6 @@ fi
 migratiebestand="$1"
 laad_migratie "$1"; shift
 
-# Commit het handwerk in een bestaande work/<service>, zodat de migratie verder kan.
-hervat() {  # <dest>
-  local dest="$1" bericht
-  if [ ! -d "$dest/.git" ]; then
-    echo "$dest bestaat niet; draai de migratie eerst zonder --verder" >&2; return 1
-  fi
-  if [ "$(git -C "$dest" branch --show-current)" != "migratie/$MIGRATIE" ]; then
-    echo "$dest staat niet op de branch migratie/$MIGRATIE" >&2; return 1
-  fi
-  if [ -n "$(git -C "$dest" ls-files -u)" ]; then
-    echo "er zijn nog onopgeloste conflicten in $dest:" >&2
-    git -C "$dest" diff --name-only --diff-filter=U | sed 's/^/  /' >&2
-    echo "los ze op (bv. in IntelliJ: Git > Resolve Conflicts) of markeer ze met git add" >&2
-    return 1
-  fi
-  if git -C "$dest" grep -qE '^(<<<<<<<|>>>>>>>)( |$)' -- .; then
-    echo "er staan nog conflictmarkers in $dest:" >&2
-    git -C "$dest" grep -lE '^(<<<<<<<|>>>>>>>)( |$)' -- . | sed 's/^/  /' >&2
-    return 1
-  fi
-  [ -n "$(git -C "$dest" status --porcelain)" ] || return 0
-  if ! git -C "$dest" diff --quiet HEAD -- .cruft.json 2>/dev/null; then
-    bericht="cruft update: $(jq -r '.commit[0:7]' "$dest/.cruft.json") (conflict opgelost)"
-  else
-    bericht="handmatige aanpassing"
-  fi
-  (cd "$dest" && commit_alles "$bericht")
-  echo "gecommit: $bericht"
-}
-
 if [ -n "${RECEPT:-}" ]; then
   controleer_recept "$ROOT" "$RECEPT"
   bouw_recepten "$ROOT"
