@@ -1,72 +1,78 @@
 # migratie-tools
 
-Losse stappen (cruft, OpenRewrite, build-check) die je lokaal op één of meer repo's
-kunt draaien, en later met multi-gitter over een hele GitLab-groep.
+Rolt migraties uit over de services in een GitLab-groep: eerst lokaal op een paar
+services, daarna met multi-gitter over de hele groep, met per service een eigen PR.
+Begrippen staan in [GLOSSARY.md](GLOSSARY.md), besluiten in [docs/adr](docs/adr).
 
 ## Structuur
 
 ```
-run.sh            multi-gitter over een GitLab-groep (standaard dry-run)
-local.sh          lokaal: kloont repo's naar ./work en draait de stappen
-repo-runner.sh    draait de gekozen stappen binnen één repo
-steps/
-  cruft-update.sh
-  openrewrite.sh
-  verify.sh
-  _lib.sh         hulpfuncties (geen stap)
-config.env.example
+run.sh                 één migratie over een GitLab-groep (standaard dry-run)
+local.sh               lokaal: kloont services naar ./work en draait de migratie
+repo-runner.sh         draait één migratie binnen één service
+migraties/<naam>.env   de migraties; <naam> wordt de branch migratie/<naam>
+transformaties/        template-update.sh, recept.sh
+controles/             verify.sh
+lib/                   hulpfuncties
+voorbeeld/             een voorbeeld-template met twee services om mee te oefenen
 ```
 
-Een stap draait in de map van de repo. Exit 0 = goed, non-zero = repo overslaan
-(multi-gitter maakt dan geen PR).
+Een migratie bestaat uit een template-update en/of één OpenRewrite-recept, gevolgd
+door de controle `verify` (build en tests). Elke transformatie commit haar eigen
+wijzigingen; de template-update maakt één commit per template-versie.
 
 ## Voorbereiding
 
-Nodig: `git`, `cruft`, Java en Maven (of een `mvnw` in de repo). Voor `run.sh` ook
+Nodig: `git`, `jq`, [cruft](https://cruft.github.io/cruft/) (`pipx install cruft`),
+Java en Maven (of een `mvnw` in de service). Voor `run.sh` ook
 [multi-gitter](https://github.com/lindell/multi-gitter).
 
 ```bash
-cp config.env.example config.env   # vul de OpenRewrite-instellingen in
+cp config.env.example config.env   # GitLab- en Maven-instellingen
 ```
+
+## Een migratie maken
+
+Kopieer `migraties/_voorbeeld.env` naar `migraties/<naam>.env` en pin alles vast:
+
+```bash
+TEMPLATE_VERSION=v1.4.0            # template-versie (tag)
+# RECEPT=...                       # en/of één OpenRewrite-recept
+```
+
+Commit het bestand: een echte run draait alleen vanaf een schone werkmap en zet de
+commit van migratie-tools in de PR.
 
 ## Lokaal draaien
 
 ```bash
-# één stap op één repo (pad of git-URL)
-./local.sh cruft-update ~/code/service-a
-
-# alle stappen achter elkaar op meerdere repo's
-./local.sh cruft-update,openrewrite,verify ~/code/service-a ~/code/service-b
-
-# bekijk het resultaat
-git -C work/service-a diff
+./local.sh migraties/template-v1.4.0.env ~/code/service-a ~/code/service-b
+git -C work/service-a log -p origin/HEAD..HEAD
 ```
 
-`local.sh` werkt op een verse clone in `./work/<naam>`, dus je eigen werkmap blijft
-ongemoeid. Niet-gecommitte wijzigingen in je lokale repo worden niet meegenomen.
+`local.sh` werkt op een verse clone in `./work/<naam>` op de branch
+`migratie/<naam>` en pusht nooit. Niet-gecommitte wijzigingen in je eigen repo worden
+niet meegenomen. Met `--zonder-verify` (vóór het migratiebestand) sla je de build over.
 
-Een stap direct in een repo draaien kan ook (let op: dit wijzigt de repo zelf):
+## Template-updates en conflicten
 
-```bash
-cd ~/code/service-a
-STEPS_DIR=~/migratie-tools/steps STEPS=cruft-update ~/migratie-tools/repo-runner.sh
-```
+De template-update loopt de template-versies één voor één af en merget elk bestand
+3-way (basis = vorige template-versie, ours = de service, theirs = de volgende
+template-versie). Bij een conflict stopt hij bij die versie, met conflictmarkers in de
+bestanden (inclusief de basis), zodat je ze in je IDE kunt oplossen.
 
 ## Over een hele GitLab-groep (multi-gitter)
 
 ```bash
-export GITLAB_TOKEN=...            # of in config.env
-./run.sh cruft-update              # dry-run: niets wordt gepusht
-./run.sh cruft-update,openrewrite,verify --go   # echt PR's aanmaken
+./run.sh migraties/template-v1.4.0.env                                  # dry-run
+./run.sh migraties/template-v1.4.0.env --go --repo-include 'service-(a|b)'
+./run.sh migraties/template-v1.4.0.env --go                             # de rest
 ```
 
-Extra multi-gitter-flags geef je gewoon achteraan mee (`--repo-include`, `--labels`,
-`--reviewers`, ...). Controleer de exacte flags van jouw versie met
-`multi-gitter run --help`.
+Een herhaalde run slaat services over die al een branch `migratie/<naam>` hebben.
+Extra multi-gitter-flags geef je achteraan mee (`--repo-include`, `--include-subgroups`, ...).
 
 ## Tips
 
-- Begin lokaal op 1 à 2 services en bekijk de diff voordat je naar de hele groep gaat.
-- Grote migraties (Spring Boot-upgrade) als aparte run/PR; kleine template-bumps mag je bundelen.
-- Pin `TEMPLATE_VERSION` bij grote template-wijzigingen.
-- Gedeeld Maven-cache (`~/.m2`) of een Nexus-mirror scheelt veel tijd bij 60 services.
+- Begin met `--go` op twee of drie services, merge die, en draai daarna de hele groep.
+- Gedeelde Maven-cache (`~/.m2`) of een Nexus-mirror scheelt veel tijd bij 60 services.

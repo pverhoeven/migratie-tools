@@ -1,0 +1,7 @@
+{
+  "project_name": "Voorbeeld Service",
+  "project_slug": "{{ cookiecutter.project_name.lower().replace(' ', '-') }}",
+  "package_name": "{{ cookiecutter.project_slug.replace('-', '') }}",
+  "java_version": "21",
+  "_copy_without_render": ["chart/templates/*"]
+}

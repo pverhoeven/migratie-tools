@@ -1,0 +1,11 @@
+replicaCount: 1
+
+image:
+  repository: registry.example.com/voorbeeld/{{ cookiecutter.project_slug }}
+  tag: ""
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080

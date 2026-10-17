@@ -1,0 +1,44 @@
+diff --git a/{{cookiecutter.project_slug}}/chart/templates/deployment.yaml b/{{cookiecutter.project_slug}}/chart/templates/deployment.yaml
+index c17e6bd..dafc1fe 100644
+--- a/{{cookiecutter.project_slug}}/chart/templates/deployment.yaml
++++ b/{{cookiecutter.project_slug}}/chart/templates/deployment.yaml
+@@ -21,3 +21,11 @@ spec:
+           ports:
+             - name: http
+               containerPort: {{ .Values.service.targetPort }}
++          livenessProbe:
++            httpGet:
++              path: /actuator/health/liveness
++              port: http
++          readinessProbe:
++            httpGet:
++              path: /actuator/health/readiness
++              port: http
+diff --git a/{{cookiecutter.project_slug}}/pom.xml b/{{cookiecutter.project_slug}}/pom.xml
+index c3e7271..5f230dd 100644
+--- a/{{cookiecutter.project_slug}}/pom.xml
++++ b/{{cookiecutter.project_slug}}/pom.xml
+@@ -25,6 +25,10 @@
+             <groupId>org.springframework.boot</groupId>
+             <artifactId>spring-boot-starter-web</artifactId>
+         </dependency>
++        <dependency>
++            <groupId>org.springframework.boot</groupId>
++            <artifactId>spring-boot-starter-actuator</artifactId>
++        </dependency>
+ 
+         <dependency>
+             <groupId>org.springframework.boot</groupId>
+diff --git a/{{cookiecutter.project_slug}}/src/main/resources/application.properties b/{{cookiecutter.project_slug}}/src/main/resources/application.properties
+index c323b52..518ecdf 100644
+--- a/{{cookiecutter.project_slug}}/src/main/resources/application.properties
++++ b/{{cookiecutter.project_slug}}/src/main/resources/application.properties
+@@ -6,4 +6,8 @@ logging.level.root=INFO
+ # --- server ---
+ server.shutdown=graceful
+ 
++# --- management ---
++management.endpoints.web.exposure.include=health,info
++management.endpoint.health.probes.enabled=true
++
+ # --- service-specifiek ---

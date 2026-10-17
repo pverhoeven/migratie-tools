@@ -1,33 +1,43 @@
 #!/usr/bin/env bash
-# Draait binnen één gekloonde repo (cwd = repo). Wordt gebruikt door zowel
-# run.sh (via multi-gitter) als local.sh.
+# Draait één migratie binnen één gekloonde service (cwd = repo). Wordt gebruikt door
+# zowel run.sh (via multi-gitter) als local.sh; de waarden uit het migratiebestand
+# staan in de environment. Elke transformatie commit zijn eigen wijzigingen.
 #
-# STEPS      komma-gescheiden stappen, bv. cruft-update,openrewrite,verify
-# STEPS_DIR  map met de stap-scripts
-# Exit 0 = er is eventueel iets gewijzigd; non-zero = repo overslaan.
+# Optioneel: ZONDER_VERIFY=1 slaat de controle over (alleen bij een dry-run).
+# Exit 0 = eventueel iets gewijzigd; non-zero = service overslaan.
 set -euo pipefail
+ROOT="$(cd "$(dirname "$0")" && pwd)"
 
-: "${STEPS:?zet STEPS}"
-: "${STEPS_DIR:?zet STEPS_DIR}"
+: "${MIGRATIE:?zet MIGRATIE}"
 
-# Het token is alleen voor multi-gitter zelf; de builds (tests, plugins) van
-# de repo's hoeven het niet te zien.
+# Het token is alleen voor multi-gitter zelf; de builds (tests, plugins) van de
+# services hoeven het niet te zien.
 unset GITLAB_TOKEN
 
-IFS=',' read -ra list <<< "$STEPS"
-for step in "${list[@]}"; do
-  echo ">> stap: $step"
-  "$STEPS_DIR/$step.sh"
-done
-
-# Build-output hoort niet in de commit (voor het geval target/ niet in .gitignore staat).
-# Alleen target/ naast een pom.xml en zonder getrackte bestanden, zodat bv. een
-# Java-package met de naam "target" blijft staan. Dit draait alleen in wegwerp-clones.
-if [ "${CLEAN_TARGET:-1}" = "1" ]; then
-  find . -path ./.git -prune -o -name pom.xml -print | while IFS= read -r pom; do
-    t="$(dirname "$pom")/target"
-    [ -d "$t" ] || continue
-    git ls-files --error-unmatch -- "$t" >/dev/null 2>&1 && continue
-    rm -rf "$t"
-  done
+# Van toepassing? Eén keer bepaald, voor alle transformaties van de migratie samen.
+if [ ! -f pom.xml ]; then
+  echo "niet van toepassing: geen pom.xml"; exit 1
 fi
+if [ -n "${TEMPLATE_VERSION:-}" ] && [ ! -f .cruft.json ]; then
+  echo "niet van toepassing: geen template-service (geen .cruft.json)"; exit 1
+fi
+
+# Transformaties, in vaste volgorde: eerst het template, dan het recept.
+if [ -n "${TEMPLATE_VERSION:-}" ]; then
+  echo ">> transformatie: template naar $TEMPLATE_VERSION"
+  "$ROOT/transformaties/template-update.sh"
+fi
+if [ -n "${RECEPT:-}" ]; then
+  echo ">> transformatie: recept $RECEPT"
+  "$ROOT/transformaties/recept.sh"
+fi
+
+# Controle
+if [ "${ZONDER_VERIFY:-0}" = "1" ]; then
+  echo ">> controle: verify overgeslagen"
+else
+  echo ">> controle: verify"
+  "$ROOT/controles/verify.sh"
+fi
+
+"$ROOT/lib/opruimen.sh"
