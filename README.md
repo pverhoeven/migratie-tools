@@ -9,7 +9,7 @@ Begrippen staan in [GLOSSARY.md](GLOSSARY.md), besluiten in [docs/adr](docs/adr)
 ```
 run.sh                 één migratie over een GitLab-groep (standaard dry-run)
 local.sh               lokaal: kloont services naar ./work en draait de migratie
-in-repo.sh             lokaal: draait de migratie in een bestaande clone (bv. in IntelliJ)
+in-repo.sh             lokaal: draait de migratie in een bestaande clone
 achterstand.sh         per template-service: template-commit en achterstand
 repo-runner.sh         draait één migratie binnen één service
 migraties/<naam>.env   de migraties; <naam> wordt de branch migratie/<naam>
@@ -95,7 +95,7 @@ bestanden (inclusief de basis). De conflicten staan ook als echte git-conflicten
 index (basis, service, template), zodat je ze in je IDE 3-way kunt mergen. Elke
 template-commit wordt een eigen commit in de service.
 
-## In je eigen clone (en vanuit IntelliJ)
+## In je eigen clone
 
 Heb je de service al als project open, draai de migratie dan direct in die clone:
 
@@ -111,19 +111,14 @@ git push -u origin migratie/cruft-update   # en open de MR zelf
 een vuile werkmap (de controle draait alles terug wat de build wijzigt). Er wordt nooit
 gepusht.
 
-**Als External Tool in IntelliJ** (*Settings → Tools → External Tools → +*), twee keer:
+Conflicten los je op in IntelliJ (*Git → Resolve Conflicts…*); het script draai je gewoon
+in de terminal, bv. die van IntelliJ (⌥F12). Met een alias in je shell-profiel hoef je het
+pad niet te typen:
 
-| | Migratie starten | Migratie verder |
-|---|---|---|
-| Program | `/pad/naar/migratie-tools/in-repo.sh` | `/pad/naar/migratie-tools/in-repo.sh` |
-| Arguments | `$Prompt$` | `--verder $Prompt$` |
-| Working directory | `$ProjectFileDir$` | `$ProjectFileDir$` |
-
-Daarna staan ze onder *Tools → External Tools* (en kun je er een sneltoets aan hangen
-via *Keymap*). IntelliJ vraagt de naam van de migratie, toont de uitvoer in een
-console en ververst daarna de bestanden; conflicten verschijnen meteen onder
-*Merge Conflicts*. Vindt IntelliJ `cruft`, `jq` of `mvn` niet, zet dan in `config.env`
-bijvoorbeeld `PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"`.
+```bash
+alias migratie=~/Developer/code/migratie-tools/in-repo.sh
+migratie cruft-update            # en daarna: migratie --verder cruft-update
+```
 
 ## Handwerk nodig
 
