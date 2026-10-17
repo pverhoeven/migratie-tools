@@ -24,6 +24,13 @@ De repo's in de groep die nooit als service gelden, voor geen enkele migratie
 Het centrale cruft-template, in een eigen git-repo, waaruit template-services zijn
 gegenereerd. Het template is de bron van de bestanden die het genereert.
 
+**Template-versie**:
+Een tag in de repo van het template.
+
+**Achterstand**:
+Het aantal template-versies dat een template-service achterloopt op de nieuwste
+template-versie.
+
 ### Hoe er gemigreerd wordt
 
 **Migratie**:
