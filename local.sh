@@ -12,6 +12,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 . "$ROOT/lib/common.sh"
 . "$ROOT/lib/migratie.sh"
+. "$ROOT/lib/recepten.sh"
 if [ -f "$ROOT/config.env" ]; then
   set -a; . "$ROOT/config.env"; set +a
 fi
@@ -25,6 +26,11 @@ if [ $# -lt 2 ]; then
   exit 2
 fi
 laad_migratie "$1"; shift
+
+if [ -n "${RECEPT:-}" ]; then
+  controleer_recept "$ROOT" "$RECEPT"
+  bouw_recepten "$ROOT"
+fi
 
 WORK_DIR="${WORK_DIR:-$ROOT/work}"
 mkdir -p "$WORK_DIR"

@@ -12,6 +12,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 . "$ROOT/lib/common.sh"
 . "$ROOT/lib/migratie.sh"
+. "$ROOT/lib/recepten.sh"
 if [ -f "$ROOT/config.env" ]; then
   set -a; . "$ROOT/config.env"; set +a
 fi
@@ -75,6 +76,11 @@ fi
 if [ "$go" -eq 0 ]; then
   echo "DRY RUN: er wordt niets gepusht. Gebruik --go om PR's aan te maken."
   args+=(--dry-run)
+fi
+
+if [ -n "${RECEPT:-}" ]; then
+  controleer_recept "$ROOT" "$RECEPT"
+  bouw_recepten "$ROOT"
 fi
 
 nieuwe_run "$ROOT" "$MIGRATIE"

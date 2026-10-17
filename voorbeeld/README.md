@@ -15,6 +15,13 @@ voorbeeld/wijzig-template.sh   # template v1.1.0 en v1.2.0 (zie wijzigingen/)
 - **klant-service** heeft de logging op `DEBUG` gezet, terwijl v1.2.0 die op `WARN`
   zet: de update stopt bij v1.2.0 met een conflict in `application.properties`.
 
+Een migratie met een recept (uit `recepten/`) verwijdert de debug-regel uit de eigen
+klasse `Bestellingen` van bestel-service:
+
+```bash
+./local.sh voorbeeld/debug-opruimen.env work/voorbeeld/services/bestel-service
+```
+
 Een eigen template-wijziging proberen: pas `work/voorbeeld/template` aan, commit,
 tag (bv. `v1.3.0`) en maak een migratiebestand met `TEMPLATE_VERSION=v1.3.0`.
 Helm-templates in `chart/templates/` worden niet door cookiecutter gerenderd

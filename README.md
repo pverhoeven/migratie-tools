@@ -12,6 +12,7 @@ local.sh               lokaal: kloont services naar ./work en draait de migratie
 repo-runner.sh         draait één migratie binnen één service
 migraties/<naam>.env   de migraties; <naam> wordt de branch migratie/<naam>
 transformaties/        template-update.sh, recept.sh
+recepten/              Maven-module met de OpenRewrite-recepten (YAML en Java)
 controles/             verify.sh
 lib/                   hulpfuncties
 voorbeeld/             een voorbeeld-template met twee services om mee te oefenen
@@ -36,12 +37,24 @@ cp config.env.example config.env   # GitLab- en Maven-instellingen
 Kopieer `migraties/_voorbeeld.env` naar `migraties/<naam>.env` en pin alles vast:
 
 ```bash
-TEMPLATE_VERSION=v1.4.0            # template-versie (tag)
-# RECEPT=...                       # en/of één OpenRewrite-recept
+TEMPLATE_VERSION=v1.4.0                          # template-versie (tag)
+RECEPT=local.migratietools.SpringBoot35          # en/of één recept uit recepten/
 ```
 
 Commit het bestand: een echte run draait alleen vanaf een schone werkmap en zet de
 commit van migratie-tools in de PR.
+
+## Recepten
+
+Recepten staan in de module `recepten/`: YAML in `src/main/resources/META-INF/rewrite/`,
+Java in `src/main/java/`. Een migratie verwijst naar precies één recept uit deze module;
+publieke recepten (bv. uit `rewrite-spring`, als dependency in `recepten/pom.xml`) roep
+je aan vanuit een YAML-recept. Elk recept heeft minstens één before/after-test
+(`RewriteTest`). Aan het begin van een run met een recept wordt de module gebouwd en
+lokaal geïnstalleerd, mét tests; een rode test stopt de run.
+
+De versie van `rewrite-maven-plugin` staat in `recepten/pom.xml` en moet bij de
+`rewrite-recipe-bom` passen (zelfde rewrite-versie).
 
 ## Lokaal draaien
 

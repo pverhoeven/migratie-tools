@@ -2,11 +2,10 @@
 # Laadt een migratiebestand (wordt gesourced door run.sh en local.sh).
 #
 # Een migratiebestand migraties/<naam>.env bevat (minstens één transformatie):
-#   TEMPLATE_VERSION          template-versie (tag) waarnaar bijgewerkt wordt
-#   RECEPT                    naam van één OpenRewrite-recept
-#   REWRITE_PLUGIN_VERSION    versie van rewrite-maven-plugin (verplicht bij RECEPT)
-#   REWRITE_RECIPE_ARTIFACTS  komma-gescheiden groupId:artifactId:version
-# Alles is vastgepind: "laatste versie" mag niet (docs/adr/0002).
+#   TEMPLATE_VERSION  template-versie (tag) waarnaar bijgewerkt wordt
+#   RECEPT            naam van één OpenRewrite-recept uit recepten/
+# Alles is vastgepind: "laatste versie" mag niet (docs/adr/0002). Voor een recept
+# doet de commit van migratie-tools dat (receptcode en plugin-versie staan hier).
 # De naam van het bestand is de naam van de migratie en van de branch.
 
 laad_migratie() {
@@ -19,7 +18,7 @@ laad_migratie() {
   fi
 
   # Waarden horen uit het migratiebestand te komen, niet uit config.env of de shell.
-  unset TEMPLATE_VERSION RECEPT REWRITE_PLUGIN_VERSION REWRITE_RECIPE_ARTIFACTS
+  unset TEMPLATE_VERSION RECEPT
   set -a; . "$bestand"; set +a
   export MIGRATIE
 
@@ -29,10 +28,4 @@ laad_migratie() {
   case "${TEMPLATE_VERSION:-}" in
     main|master|HEAD) echo "$bestand: TEMPLATE_VERSION moet een vaste versie zijn, geen '$TEMPLATE_VERSION'" >&2; exit 2 ;;
   esac
-  if [ -n "${RECEPT:-}" ]; then
-    : "${REWRITE_PLUGIN_VERSION:?$bestand: zet REWRITE_PLUGIN_VERSION}"
-    case ",${REWRITE_RECIPE_ARTIFACTS:-},${REWRITE_PLUGIN_VERSION}," in
-      *LATEST*|*RELEASE*) echo "$bestand: gebruik vaste versies, geen LATEST/RELEASE" >&2; exit 2 ;;
-    esac
-  fi
 }

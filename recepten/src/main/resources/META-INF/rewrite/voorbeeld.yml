@@ -1,0 +1,9 @@
+# Voorbeeld van een YAML-recept: stelt een migratie samen uit eigen en publieke recepten.
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: local.migratietools.OpruimenDebugOutput
+displayName: Debug-output opruimen
+description: Verwijdert System.out.println-statements en daarna ongebruikte imports.
+recipeList:
+  - local.migratietools.VerwijderSystemOutPrintln
+  - org.openrewrite.java.RemoveUnusedImports

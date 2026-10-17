@@ -52,7 +52,20 @@ vervang "$s/pom.xml" "    </dependencies>" "        <dependency>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
     </dependencies>"
-git -C "$s" add -A && git_v -C "$s" commit -q -m "Eigen aanpassingen: max-items, 3 replica's, validation"
+cat > "$s/src/main/java/nl/voorbeeld/bestelservice/Bestellingen.java" <<'JAVA'
+package nl.voorbeeld.bestelservice;
+
+import java.util.List;
+
+public class Bestellingen {
+
+    public int aantalRegels(List<String> regels) {
+        System.out.println("aantal regels: " + regels.size());
+        return regels.size();
+    }
+}
+JAVA
+git -C "$s" add -A && git_v -C "$s" commit -q -m "Eigen aanpassingen: max-items, 3 replica's, validation, Bestellingen"
 
 # klant-service: past de logging aan, die later ook in het template verandert
 genereer "Klant Service"
