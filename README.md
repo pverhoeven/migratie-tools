@@ -76,7 +76,8 @@ De template-update doet hetzelfde als `cruft update`: van de template-commit in
 Alleen loopt hij de commits van het template één voor één af en merget hij elk bestand
 3-way (basis = vorige stand van het template, ours = de service, theirs = de volgende
 stand). Bij een conflict stopt hij bij die template-commit, met conflictmarkers in de
-bestanden (inclusief de basis), zodat je ze in je IDE kunt oplossen. Elke
+bestanden (inclusief de basis). De conflicten staan ook als echte git-conflicten in de
+index (basis, service, template), zodat je ze in je IDE 3-way kunt mergen. Elke
 template-commit wordt een eigen commit in de service.
 
 ## Handwerk nodig
@@ -86,13 +87,20 @@ Maak hem lokaal af:
 
 ```bash
 ./local.sh migraties/template-2026-10.env <git-url-van-de-service>   # stopt bij het conflict
-# los de conflicten op in work/<service> (of repareer de build)
+# los de conflicten op in work/<service> (of repareer de build), zie hieronder
 ./local.sh --verder migraties/template-2026-10.env <service>          # commit en gaat verder
 git -C work/<service> push -u origin migratie/template-2026-10
 ```
 
 Open daarna zelf de MR, met de labels `migratie` en `<naam van de migratie>`.
-`--verder` weigert zolang er nog conflictmarkers in de service staan.
+`--verder` weigert zolang er nog conflicten of conflictmarkers in de service staan.
+
+Conflicten oplossen in IntelliJ: open `work/<service>` en kies *Git → Resolve Conflicts…*
+(de bestanden staan ook in het Commit-venster onder *Merge Conflicts*). In het
+merge-venster is links de service (*Yours*), rechts het template (*Theirs*) en in het
+midden het resultaat, met de vorige stand van het template als basis. Klaar met
+*Apply*; daarna `./local.sh --verder …`. Op de commandoregel kan het ook, bv. met
+`git checkout --theirs -- <bestand>` (template) of `--ours` (service) en `git add`.
 
 ## Over een hele GitLab-groep (multi-gitter)
 

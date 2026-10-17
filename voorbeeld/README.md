@@ -19,8 +19,9 @@ resources in de Helm-chart.
 - **klant-service** heeft de logging op `DEBUG` gezet: de update stopt bij de
   template-commit "logging op warn" met een conflict in `application.properties`.
 
-Het conflict afmaken: kies in `work/klant-service/src/main/resources/application.properties`
-een waarde, haal de markers weg en ga verder:
+Het conflict afmaken: open `work/klant-service` in IntelliJ, kies *Git → Resolve
+Conflicts…* en kies in `application.properties` een waarde (of haal de markers met de
+hand weg en doe `git add`). Ga daarna verder:
 
 ```bash
 ./local.sh --verder voorbeeld/template-bijwerken.env klant-service
