@@ -15,6 +15,14 @@ voorbeeld/wijzig-template.sh   # template v1.1.0 en v1.2.0 (zie wijzigingen/)
 - **klant-service** heeft de logging op `DEBUG` gezet, terwijl v1.2.0 die op `WARN`
   zet: de update stopt bij v1.2.0 met een conflict in `application.properties`.
 
+Het conflict in klant-service afmaken: kies in
+`work/klant-service/src/main/resources/application.properties` een waarde, haal de
+markers weg en ga verder:
+
+```bash
+./local.sh --verder voorbeeld/template-v1.2.0.env klant-service
+```
+
 Een migratie met een recept (uit `recepten/`) verwijdert de debug-regel uit de eigen
 klasse `Bestellingen` van bestel-service:
 

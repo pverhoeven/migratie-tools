@@ -5,6 +5,8 @@
 #
 # Optioneel: ZONDER_VERIFY=1 slaat de controle over (alleen bij een dry-run).
 #            RESULTATEN=<bestand>: hier komt één regel met de uitkomst bij.
+#            BASIS=<commit>: vergelijk hiermee voor Gewijzigd/Ongewijzigd (local.sh
+#            --verder: het begin van de branch); standaard de commit bij de start.
 #
 # Exit-codes (multi-gitter maakt alleen bij 0 een PR, en alleen als er commits zijn):
 #   0  Gewijzigd of Ongewijzigd
@@ -45,7 +47,7 @@ if [ -n "${TEMPLATE_VERSION:-}" ] && [ ! -f .cruft.json ]; then
   uitkomst 10 "Niet van toepassing" "geen template-service (geen .cruft.json)"
 fi
 
-start="$(git rev-parse HEAD)"
+start="${BASIS:-$(git rev-parse HEAD)}"
 
 # Transformaties, in vaste volgorde: eerst het template, dan het recept.
 if [ -n "${TEMPLATE_VERSION:-}" ]; then

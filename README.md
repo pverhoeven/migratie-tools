@@ -74,6 +74,21 @@ De template-update loopt de template-versies één voor één af en merget elk b
 template-versie). Bij een conflict stopt hij bij die versie, met conflictmarkers in de
 bestanden (inclusief de basis), zodat je ze in je IDE kunt oplossen.
 
+## Handwerk nodig
+
+Een service met de uitkomst "Handwerk nodig" (conflict of rode build) krijgt geen PR.
+Maak hem lokaal af:
+
+```bash
+./local.sh migraties/template-v1.4.0.env <git-url-van-de-service>   # stopt bij het conflict
+# los de conflicten op in work/<service> (of repareer de build)
+./local.sh --verder migraties/template-v1.4.0.env <service>          # commit en gaat verder
+git -C work/<service> push -u origin migratie/template-v1.4.0
+```
+
+Open daarna zelf de MR, met de labels `migratie` en `<naam van de migratie>`.
+`--verder` weigert zolang er nog conflictmarkers in de service staan.
+
 ## Over een hele GitLab-groep (multi-gitter)
 
 ```bash

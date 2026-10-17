@@ -107,7 +107,7 @@ while IFS=$'\t' read -r project andere; do
   wachtend+=("$project")
 done <<< "$mrs"
 if [ ${#wachtend[@]} -gt 0 ]; then
-  uitsluiten+=("$(printf '^(%s)$' "$(printf '%s\n' "${wachtend[@]}" | sort -u | sed 's/[][\.*^$+?(){}|/]/\\&/g' | paste -sd'|' -)")")
+  uitsluiten+=("$(printf '^(%s)$' "$(printf '%s\n' "${wachtend[@]}" | sort -u | sed 's/[][\.*^$+?(){}|]/\\&/g' | paste -sd'|' -)")")
 fi
 if [ ${#uitsluiten[@]} -gt 0 ]; then
   args+=(--repo-exclude "$(printf '%s\n' "${uitsluiten[@]}" | paste -sd'|' -)")
