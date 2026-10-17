@@ -43,6 +43,13 @@ echo "=== $MIGRATIE in $repo ==="
 if [ "$verder" -eq 1 ]; then
   hervat "$repo" || exit 20
 else
+  huidige="$(git branch --show-current || true)"
+  case "$huidige" in
+    migratie/*)
+      echo "je staat op $huidige: een migratie start vanaf main, niet bovenop een andere migratie" >&2
+      echo "ga eerst naar je hoofdbranch (bv. git switch main && git pull)" >&2
+      exit 2 ;;
+  esac
   if git rev-parse -q --verify "refs/heads/$branch" >/dev/null; then
     echo "de branch $branch bestaat al; gebruik --verder, of verwijder de branch om opnieuw te beginnen" >&2
     exit 2
@@ -53,7 +60,7 @@ else
     echo "de werkmap is niet schoon; commit of stash eerst je wijzigingen" >&2
     exit 2
   fi
-  echo "branch $branch vanaf $(git branch --show-current || true) ($(git rev-parse --short HEAD))"
+  echo "branch $branch vanaf ${huidige:-HEAD} ($(git rev-parse --short HEAD))"
   git config "branch.$branch.migratiebasis" "$(git rev-parse HEAD)"
   git switch -q -c "$branch"
 fi
@@ -74,7 +81,12 @@ case "$status" in
     echo "--- push en open de MR zelf (labels: migratie, $MIGRATIE):"
     echo "    git push -u origin $branch" ;;
   20)
-    echo "--- los het op (bv. in IntelliJ: Git > Resolve Conflicts) en draai daarna:"
-    echo "    $0 --verder $1${2:+ $2}" ;;
+    if [ -n "$(git ls-files -u)" ]; then
+      echo "--- los de conflicten op (bv. in IntelliJ: Git > Resolve Conflicts) en draai daarna:"
+    else
+      echo "--- los het probleem hierboven op en draai daarna:"
+    fi
+    echo "    $0 --verder $1${2:+ $2}"
+    echo "--- of begin opnieuw: git switch - && git branch -D $branch" ;;
 esac
 exit "$status"

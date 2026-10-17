@@ -83,7 +83,7 @@ for repo in "$@"; do
       echo "    git -C $dest push -u origin migratie/$MIGRATIE"
     fi
   else
-    echo "--- de stand staat in $dest; los het op en draai daarna:"
+    echo "--- de stand staat in $dest; los het op (conflicten: git status) en draai daarna:"
     echo "    $0 --verder $migratiebestand $name"
   fi
 done

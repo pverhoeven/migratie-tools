@@ -30,7 +30,7 @@ tpl() { git -C "$tmp/template" "$@"; }
 huidig="$(jq -r .commit .cruft.json)"
 doel="$(tpl rev-parse HEAD)"
 tpl cat-file -e "$huidig^{commit}" 2>/dev/null \
-  || { reden "de template-commit $huidig van de service bestaat niet in het template"; exit 1; }
+  || { reden "de template-commit ${huidig:0:7} uit .cruft.json bestaat niet (meer) in het template; is de historie van het template herschreven?"; exit 1; }
 
 if [ "$huidig" = "$doel" ] || tpl merge-base --is-ancestor "$doel" "$huidig"; then
   echo "service is al bij met het template ($(tpl rev-parse --short "$doel"))"
