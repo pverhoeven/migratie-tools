@@ -13,6 +13,7 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 . "$ROOT/lib/common.sh"
 . "$ROOT/lib/migratie.sh"
 . "$ROOT/lib/recepten.sh"
+. "$ROOT/lib/gitlab.sh"
 if [ -f "$ROOT/config.env" ]; then
   set -a; . "$ROOT/config.env"; set +a
 fi
@@ -22,6 +23,7 @@ if [ $# -lt 1 ]; then
   exit 2
 fi
 laad_migratie "$1"; shift
+vereist multi-gitter curl jq
 
 : "${GITLAB_TOKEN:?zet GITLAB_TOKEN (in config.env of je shell)}"
 : "${GITLAB_GROUP:?zet GITLAB_GROUP (in config.env of je shell)}"
@@ -29,12 +31,17 @@ laad_migratie "$1"; shift
 go=0
 ZONDER_VERIFY=0
 extra=()
-for a in "$@"; do
-  case "$a" in
+uitsluiten=()
+while [ $# -gt 0 ]; do
+  case "$1" in
     --go) go=1 ;;
     --zonder-verify) ZONDER_VERIFY=1 ;;
-    *) extra+=("$a") ;;
+    # wordt samengevoegd met de uitsluitlijst en de wachtende services
+    --repo-exclude) uitsluiten+=("$2"); shift ;;
+    --repo-exclude=*) uitsluiten+=("${1#*=}") ;;
+    *) extra+=("$1") ;;
   esac
+  shift
 done
 export ZONDER_VERIFY
 
@@ -84,6 +91,28 @@ if [ -n "${RECEPT:-}" ]; then
 fi
 
 nieuwe_run "$ROOT" "$MIGRATIE"
+
+# Uitsluitlijst (config.env): repo's die nooit een service zijn.
+# shellcheck disable=SC2086
+if [ -n "${UITSLUITLIJST:-}" ]; then uitsluiten+=("$(repo_regex $UITSLUITLIJST)"); fi
+
+# Per service hooguit één open migratie-PR (docs/adr/0001): services met een open MR
+# van een andere migratie doen nu niet mee en krijgen "Wacht op vorige migratie".
+echo ">> open MR's van andere migraties opvragen"
+mrs="$(open_migratie_mrs)" || { echo "kon de open MR's niet opvragen bij GitLab" >&2; exit 2; }
+wachtend=()
+while IFS=$'\t' read -r project andere; do
+  [ -n "$project" ] && [ "$andere" != "$MIGRATIE" ] || continue
+  printf '%s\tWacht op vorige migratie\topen MR van migratie %s\n' "$project" "$andere" >> "$RESULTATEN"
+  wachtend+=("$project")
+done <<< "$mrs"
+if [ ${#wachtend[@]} -gt 0 ]; then
+  uitsluiten+=("$(printf '^(%s)$' "$(printf '%s\n' "${wachtend[@]}" | sort -u | sed 's/[][\.*^$+?(){}|/]/\\&/g' | paste -sd'|' -)")")
+fi
+if [ ${#uitsluiten[@]} -gt 0 ]; then
+  args+=(--repo-exclude "$(printf '%s\n' "${uitsluiten[@]}" | paste -sd'|' -)")
+fi
+
 status=0
 multi-gitter "${args[@]}" ${extra[@]+"${extra[@]}"} || status=$?
 "$ROOT/lib/samenvatting.sh" "$RESULTATEN"

@@ -85,6 +85,14 @@ bestanden (inclusief de basis), zodat je ze in je IDE kunt oplossen.
 Een herhaalde run slaat services over die al een branch `migratie/<naam>` hebben.
 Extra multi-gitter-flags geef je achteraan mee (`--repo-include`, `--include-subgroups`, ...).
 
+Vóór de run vraagt `run.sh` bij GitLab de open MR's met label `migratie` op. Een service
+met een open MR van een *andere* migratie doet niet mee en krijgt de uitkomst
+"Wacht op vorige migratie"; een latere run pakt hem op. Repo's op de `UITSLUITLIJST`
+(`config.env`) doen nooit mee.
+
+Elke run schrijft `runs/<migratie>-<tijd>/resultaten.tsv` en toont aan het eind de
+uitkomst per service, met de werklijst (Handwerk nodig) bovenaan.
+
 ## Tips
 
 - Begin met `--go` op twee of drie services, merge die, en draai daarna de hele groep.

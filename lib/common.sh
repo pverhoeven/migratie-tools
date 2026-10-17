@@ -53,3 +53,12 @@ nieuwe_run() {  # <root> <migratie>
   : > "$RESULTATEN"
   export RESULTATEN
 }
+
+# Regex die eindigt op één van de gegeven repo-namen of -paden (voor --repo-exclude).
+repo_regex() {  # <naam-of-pad>...
+  local r="" n
+  for n in "$@"; do
+    r+="${r:+|}$(printf '%s' "$n" | sed 's/[][\.*^$+?(){}|]/\\&/g')"
+  done
+  [ -n "$r" ] && printf '(^|/)(%s)$' "$r"
+}

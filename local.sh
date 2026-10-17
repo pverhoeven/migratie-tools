@@ -41,6 +41,11 @@ for repo in "$@"; do
   dest="$WORK_DIR/$name"
   echo
   echo "=== $name ==="
+  # shellcheck disable=SC2086
+  if [ -n "${UITSLUITLIJST:-}" ] && [[ "$name" =~ $(repo_regex $UITSLUITLIJST) ]]; then
+    echo "staat op de uitsluitlijst, geen service"
+    continue
+  fi
   rm -rf "$dest"
   if ! git clone --quiet "$repo" "$dest"; then
     printf '%s\tHandwerk nodig\tclonen mislukt\n' "$name" >> "$RESULTATEN"
