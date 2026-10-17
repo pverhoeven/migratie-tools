@@ -56,6 +56,9 @@ package nl.voorbeeld.bestelservice;
 
 import java.util.List;
 
+import org.springframework.stereotype.Component;
+
+@Component
 public class Bestellingen {
 
     public int aantalRegels(List<String> regels) {
@@ -65,6 +68,81 @@ public class Bestellingen {
 }
 JAVA
 git -C "$s" add -A && git_v -C "$s" commit -q -m "feat: max-items, 3 replica's, validation en Bestellingen"
+
+# Rommel voor de wekelijkse opschoning (voorbeeld/opschoning.env); de nummers staan
+# in voorbeeld/README.md.
+cat > "$s/src/main/java/nl/voorbeeld/bestelservice/BestelService.java" <<'JAVA'
+package nl.voorbeeld.bestelservice;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+@Service
+public class BestelService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(BestelService.class);
+
+    private final Bestellingen bestellingen;
+    private int teller;
+
+    @Autowired
+    public BestelService(Bestellingen bestellingen) {
+        this.bestellingen = bestellingen;
+    }
+
+    public boolean isLeeg(List<String> regels) {
+        List<String> kopie = new ArrayList<String>(regels);
+        int ongebruikt = 3;
+        LOG.info("regels: " + kopie.size());
+        if (kopie.isEmpty()) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public String toString() {
+        try {
+            return "BestelService " + bestellingen.aantalRegels(List.of());
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+            return "BestelService";
+        }
+    }
+}
+JAVA
+cat > "$s/src/test/java/nl/voorbeeld/bestelservice/BestelServiceTest.java" <<'JAVA'
+package nl.voorbeeld.bestelservice;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
+public class BestelServiceTest {
+
+    private final BestelService service = new BestelService(new Bestellingen());
+
+    @Test
+    public void legeLijstIsLeeg() {
+        assertTrue(service.isLeeg(List.of()));
+    }
+
+    @Test
+    public void lijstMetRegelIsNietLeeg() {
+        assertFalse(service.isLeeg(List.of("regel")));
+    }
+}
+JAVA
+git -C "$s" add -A && git_v -C "$s" commit -q -m "feat: BestelService"
 
 # klant-service: past de logging aan, die later ook in het template verandert
 genereer "Klant Service"

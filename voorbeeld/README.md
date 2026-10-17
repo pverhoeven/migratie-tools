@@ -42,12 +42,28 @@ klasse `Bestellingen` van bestel-service:
 ./local.sh voorbeeld/debug-opruimen.env work/voorbeeld/services/bestel-service
 ```
 
-De wekelijkse opschoning probeer je zo (zet eerst wat rommel in een service, zoals een
-ongebruikte import of `LOG.info("x: " + y)`):
+De wekelijkse opschoning probeer je op bestel-service, die rommel heeft in `BestelService`
+en `BestelServiceTest`:
 
 ```bash
 ./local.sh voorbeeld/opschoning.env work/voorbeeld/services/bestel-service
+git -C work/bestel-service show
 ```
+
+| Rommel in de service | Recept |
+|---|---|
+| ongebruikte imports (`Map`, en `Autowired` na het weghalen) | `RemoveUnusedImports` |
+| ongebruikt privéveld `teller` | `RemoveUnusedPrivateFields` |
+| `@Autowired` op de enige constructor | `NoAutowiredOnConstructor` |
+| `new ArrayList<String>(…)` | `UseDiamondOperator` |
+| ongebruikte variabele `ongebruikt` | `RemoveUnusedLocalVariables` |
+| `LOG.info("regels: " + …)` | `ParameterizedLogging` |
+| `if (…) return true; else return false;` | `SimplifyBooleanReturn` |
+| `toString()` zonder `@Override` | `MissingOverrideAnnotation` |
+| `e.printStackTrace()` | `PrintStackTraceToLogError` |
+| `public` testklasse en testmethodes | `JUnit5BestPractices` |
+
+Draai je de opschoning daarna nog een keer, dan is de uitkomst "Ongewijzigd".
 
 Een eigen template-wijziging proberen: pas `work/voorbeeld/template` aan, commit op
 `main` en draai de migratie opnieuw. Helm-templates in `chart/templates/` worden niet
