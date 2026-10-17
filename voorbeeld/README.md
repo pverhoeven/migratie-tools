@@ -42,6 +42,13 @@ klasse `Bestellingen` van bestel-service:
 ./local.sh voorbeeld/debug-opruimen.env work/voorbeeld/services/bestel-service
 ```
 
+De wekelijkse opschoning probeer je zo (zet eerst wat rommel in een service, zoals een
+ongebruikte import of `LOG.info("x: " + y)`):
+
+```bash
+./local.sh voorbeeld/opschoning.env work/voorbeeld/services/bestel-service
+```
+
 Een eigen template-wijziging proberen: pas `work/voorbeeld/template` aan, commit op
 `main` en draai de migratie opnieuw. Helm-templates in `chart/templates/` worden niet
 door cookiecutter gerenderd (`_copy_without_render`), omdat ze zelf `{{ }}` gebruiken.

@@ -1,0 +1,34 @@
+# Kleine, veilige opschoning die elke week kan draaien. Idempotent: in een schone service
+# verandert er niets, en dan komt er ook geen MR. Grotere of opiniërende recepten
+# (Spring Boot-upgrades, AssertJ, CommonStaticAnalysis, AutoFormat) horen hier niet in,
+# die draai je als losse migratie.
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: local.migratietools.WekelijkseOpschoning
+displayName: Wekelijkse opschoning
+description: Ruimt dode code, overbodige constructies en logging- en test-slordigheden op.
+recipeList:
+  # dode code
+  - org.openrewrite.java.RemoveUnusedImports
+  - org.openrewrite.staticanalysis.RemoveUnusedLocalVariables
+  - org.openrewrite.staticanalysis.RemoveUnusedPrivateFields
+  - org.openrewrite.staticanalysis.RemoveUnusedPrivateMethods
+  # eenvoudiger en moderner
+  - org.openrewrite.staticanalysis.SimplifyBooleanExpression
+  - org.openrewrite.staticanalysis.SimplifyBooleanReturn
+  - org.openrewrite.staticanalysis.UseDiamondOperator
+  - org.openrewrite.staticanalysis.MissingOverrideAnnotation
+  # logging: een selectie uit Slf4jBestPractices, zonder WrapExpensiveLogStatementsInConditionals
+  # (zet argumenten in een lambda met de fluent API) en CatchBlockLogLevel (past logniveaus aan)
+  - org.openrewrite.java.logging.slf4j.ParameterizedLogging
+  - org.openrewrite.java.logging.slf4j.StringFormatToParameterizedLogging
+  - org.openrewrite.java.logging.slf4j.MessageFormatToParameterizedLogging
+  - org.openrewrite.java.logging.ArgumentArrayToVarargs
+  - org.openrewrite.java.logging.slf4j.StripToStringFromArguments
+  - org.openrewrite.java.logging.slf4j.CompleteExceptionLogging
+  - org.openrewrite.java.logging.slf4j.LoggersNamedForEnclosingClass
+  - org.openrewrite.java.logging.PrintStackTraceToLogError
+  # tests
+  - org.openrewrite.java.testing.junit5.JUnit5BestPractices
+  # Spring
+  - org.openrewrite.java.spring.NoAutowiredOnConstructor

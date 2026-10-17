@@ -43,12 +43,24 @@
             <groupId>org.openrewrite</groupId>
             <artifactId>rewrite-java</artifactId>
         </dependency>
-        <!-- Publieke recepten die YAML-recepten hier kunnen aanroepen, bv.:
+        <!-- Publieke recepten die de YAML-recepten hier aanroepen (versies uit de BOM).
+             Let op: deze vallen onder de Moderne Source Available License. -->
+        <dependency>
+            <groupId>org.openrewrite.recipe</groupId>
+            <artifactId>rewrite-static-analysis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.openrewrite.recipe</groupId>
+            <artifactId>rewrite-logging-frameworks</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.openrewrite.recipe</groupId>
+            <artifactId>rewrite-testing-frameworks</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.openrewrite.recipe</groupId>
             <artifactId>rewrite-spring</artifactId>
         </dependency>
-        -->
 
         <dependency>
             <groupId>org.openrewrite</groupId>

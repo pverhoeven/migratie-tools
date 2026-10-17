@@ -69,7 +69,23 @@ je aan vanuit een YAML-recept. Elk recept heeft minstens één before/after-test
 lokaal geïnstalleerd, mét tests; een rode test stopt de run.
 
 De versie van `rewrite-maven-plugin` staat in `recepten/pom.xml` en moet bij de
-`rewrite-recipe-bom` passen (zelfde rewrite-versie).
+`rewrite-recipe-bom` passen (zelfde rewrite-versie). De publieke receptmodules
+(`rewrite-spring`, `rewrite-static-analysis`, `rewrite-logging-frameworks`,
+`rewrite-testing-frameworks`) vallen onder de Moderne Source Available License.
+
+Beschikbare recepten:
+
+| Recept | Waarvoor |
+|---|---|
+| `local.migratietools.WekelijkseOpschoning` | kleine, idempotente opschoning om wekelijks te draaien: ongebruikte imports, velden, methodes en variabelen, omslachtige booleans, diamond-operator, `@Override`, geparametriseerde SLF4J-logregels, `printStackTrace` naar de logger, JUnit 5-opschoning, overbodige `@Autowired` op constructors |
+| `local.migratietools.OpruimenDebugOutput` | voorbeeld: `System.out.println` weg |
+
+Voor een wekelijkse opschoning maak je elke week een migratiebestand, bv.
+`migraties/opschoning-2026-w42.env` met `RECEPT=local.migratietools.WekelijkseOpschoning`.
+Een service waarin niets op te ruimen valt, krijgt geen MR. Grotere of opiniërende
+recepten (Spring Boot-upgrades, AssertJ, `CommonStaticAnalysis`, `AutoFormat`) draai je
+als losse migratie; een Spring Boot-upgrade bij template-services samen met
+`CRUFT_UPDATE=ja` (het template hoogt de parent op, het recept past de code aan).
 
 ## Lokaal draaien
 
