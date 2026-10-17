@@ -13,7 +13,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 vereist git jq
 
 if git grep -qE '^(<<<<<<<|>>>>>>>)( |$)' -- . 2>/dev/null; then
-  echo "er staan nog conflictmarkers in de service; los die eerst op"
+  reden "er staan nog conflictmarkers in de service; los die eerst op"
   exit 1
 fi
 
@@ -26,9 +26,9 @@ versienaam() { tpl describe --tags --exact-match "$1" 2>/dev/null || tpl rev-par
 
 huidig="$(jq -r .commit .cruft.json)"
 doel="$(tpl rev-parse --verify --quiet "$TEMPLATE_VERSION^{commit}")" \
-  || { echo "template-versie $TEMPLATE_VERSION bestaat niet"; exit 1; }
+  || { reden "template-versie $TEMPLATE_VERSION bestaat niet"; exit 1; }
 tpl cat-file -e "$huidig^{commit}" 2>/dev/null \
-  || { echo "de huidige template-commit $huidig van de service bestaat niet in het template"; exit 1; }
+  || { reden "de template-commit $huidig van de service bestaat niet in het template"; exit 1; }
 
 if [ "$huidig" = "$doel" ] || tpl merge-base --is-ancestor "$doel" "$huidig"; then
   echo "service zit al op $TEMPLATE_VERSION of verder"
@@ -85,8 +85,7 @@ for versie in "${versies[@]}"; do
   cp "$tmp/cruft.json" .cruft.json
 
   if [ ${#conflicten[@]} -gt 0 ]; then
-    echo "conflicten bij template $naar, los ze op en ga daarna verder:"
-    printf '  %s\n' "${conflicten[@]}"
+    reden "conflict bij template $naar: $(printf '%s, ' "${conflicten[@]}" | sed 's/, $//')"
     exit 1
   fi
   commit_alles "template: $naar"

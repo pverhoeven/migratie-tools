@@ -36,3 +36,20 @@ commit_alles() {
     git -c user.name=migratie-tools -c user.email=migratie-tools@localhost commit -q -m "$1"
   fi
 }
+
+# Meld waarom een transformatie of controle faalt: op het scherm en (via
+# REDEN_BESTAND, gezet door repo-runner.sh) als reden in het resultatenbestand.
+reden() {
+  echo "$*"
+  if [ -n "${REDEN_BESTAND:-}" ]; then echo "$*" > "$REDEN_BESTAND"; fi
+}
+
+# Maak de map voor de resultaten van een run aan en exporteer RESULTATEN.
+nieuwe_run() {  # <root> <migratie>
+  local map
+  map="$1/runs/$2-$(date +%Y%m%d-%H%M%S)"
+  mkdir -p "$map"
+  RESULTATEN="$map/resultaten.tsv"
+  : > "$RESULTATEN"
+  export RESULTATEN
+}

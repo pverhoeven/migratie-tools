@@ -10,6 +10,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
+. "$ROOT/lib/common.sh"
 . "$ROOT/lib/migratie.sh"
 if [ -f "$ROOT/config.env" ]; then
   set -a; . "$ROOT/config.env"; set +a
@@ -27,7 +28,7 @@ laad_migratie "$1"; shift
 
 WORK_DIR="${WORK_DIR:-$ROOT/work}"
 mkdir -p "$WORK_DIR"
-ok=(); skipped=()
+nieuwe_run "$ROOT" "$MIGRATIE"
 
 for repo in "$@"; do
   name="$(basename "${repo%/}")"; name="${name%.git}"
@@ -35,22 +36,18 @@ for repo in "$@"; do
   echo
   echo "=== $name ==="
   rm -rf "$dest"
-  git clone --quiet "$repo" "$dest"
-  git -C "$dest" checkout -q -b "migratie/$MIGRATIE"
+  if ! git clone --quiet "$repo" "$dest"; then
+    printf '%s\tHandwerk nodig\tclonen mislukt\n' "$name" >> "$RESULTATEN"
+    continue
+  fi
+  git -C "$dest" checkout -q -B "migratie/$MIGRATIE"
 
-  if (cd "$dest" && "$ROOT/repo-runner.sh"); then
-    ok+=("$name")
+  if (cd "$dest" && REPOSITORY="$name" "$ROOT/repo-runner.sh"); then
     echo "--- commits op migratie/$MIGRATIE in $dest:"
     git -C "$dest" log --oneline origin/HEAD..HEAD
-    git -C "$dest" status --short
   else
-    skipped+=("$name")
-    echo "--- overgeslagen (zie hierboven); de stand staat in $dest"
+    echo "--- de stand staat in $dest"
   fi
 done
 
-echo
-echo "=== samenvatting: $MIGRATIE ==="
-echo "geslaagd:     ${ok[*]-geen}"
-echo "overgeslagen: ${skipped[*]-geen}"
-echo "resultaten in: $WORK_DIR"
+"$ROOT/lib/samenvatting.sh" "$RESULTATEN"

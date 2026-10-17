@@ -10,6 +10,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
+. "$ROOT/lib/common.sh"
 . "$ROOT/lib/migratie.sh"
 if [ -f "$ROOT/config.env" ]; then
   set -a; . "$ROOT/config.env"; set +a
@@ -76,4 +77,8 @@ if [ "$go" -eq 0 ]; then
   args+=(--dry-run)
 fi
 
-exec multi-gitter "${args[@]}" ${extra[@]+"${extra[@]}"}
+nieuwe_run "$ROOT" "$MIGRATIE"
+status=0
+multi-gitter "${args[@]}" ${extra[@]+"${extra[@]}"} || status=$?
+"$ROOT/lib/samenvatting.sh" "$RESULTATEN"
+exit "$status"
