@@ -9,6 +9,7 @@ Begrippen staan in [GLOSSARY.md](GLOSSARY.md), besluiten in [docs/adr](docs/adr)
 ```
 run.sh                 één migratie over een GitLab-groep (standaard dry-run)
 local.sh               lokaal: kloont services naar ./work en draait de migratie
+achterstand.sh         per template-service: template-versie en achterstand
 repo-runner.sh         draait één migratie binnen één service
 migraties/<naam>.env   de migraties; <naam> wordt de branch migratie/<naam>
 transformaties/        template-update.sh, recept.sh
@@ -107,6 +108,17 @@ met een open MR van een *andere* migratie doet niet mee en krijgt de uitkomst
 
 Elke run schrijft `runs/<migratie>-<tijd>/resultaten.tsv` en toont aan het eind de
 uitkomst per service, met de werklijst (Handwerk nodig) bovenaan.
+
+## Achterstand
+
+```bash
+./achterstand.sh                       # alle template-services in GITLAB_GROUP
+./achterstand.sh ~/code/service-a      # of lokale repo's
+```
+
+Toont per template-service op welke template-versie hij zit en hoeveel template-versies
+hij achterloopt, de grootste achterstand bovenaan. Handig vóór je een nieuwe
+template-migratie start: services die ver achterlopen krijgen meer kans op conflicten.
 
 ## Tips
 

@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# Laat per template-service zien op welke template-versie hij zit en hoeveel
+# template-versies hij achterloopt (de achterstand). Wijzigt niets.
+#
+# Gebruik: ./achterstand.sh                  alle services in GITLAB_GROUP (GitLab-API)
+#          ./achterstand.sh <repo> [<repo>...] lokale repo's
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+. "$ROOT/lib/common.sh"
+. "$ROOT/lib/gitlab.sh"
+if [ -f "$ROOT/config.env" ]; then
+  set -a; . "$ROOT/config.env"; set +a
+fi
+vereist git jq
+
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+uitvoer="$tmp/uitvoer.tsv"
+: > "$uitvoer"
+
+# Eén clone per template (gecachet op URL).
+template_clone() {  # <url>
+  local dir
+  dir="$tmp/template-$(printf '%s' "$1" | shasum | cut -c1-12)"
+  [ -d "$dir" ] || git clone --quiet --bare "$1" "$dir"
+  echo "$dir"
+}
+
+# Schrijft "<service><TAB><versie><TAB><achterstand><TAB><nieuwste>" voor één .cruft.json.
+meet() {  # <service> <.cruft.json>
+  local service="$1" url commit tpl versie nieuwste achter
+  url="$(jq -r .template "$2")"; commit="$(jq -r .commit "$2")"
+  if ! tpl="$(template_clone "$url")"; then
+    printf '%s\t%s\t%s\t%s\n' "$service" "?" "?" "template niet te clonen" >> "$uitvoer"; return
+  fi
+  if ! git -C "$tpl" cat-file -e "$commit^{commit}" 2>/dev/null; then
+    printf '%s\t%s\t%s\t%s\n' "$service" "${commit:0:7}" "?" "commit onbekend in template" >> "$uitvoer"; return
+  fi
+  versie="$(git -C "$tpl" describe --tags "$commit" 2>/dev/null || git -C "$tpl" rev-parse --short "$commit")"
+  nieuwste="$(git -C "$tpl" tag --sort=-v:refname | head -1)"
+  achter="$(git -C "$tpl" tag --no-merged "$commit" | wc -l | tr -d ' ')"
+  printf '%s\t%s\t%s\t%s\n' "$service" "$versie" "$achter" "${nieuwste:-geen tags}" >> "$uitvoer"
+}
+
+if [ $# -gt 0 ]; then
+  for repo in "$@"; do
+    name="$(basename "${repo%/}")"
+    if [ -f "$repo/.cruft.json" ]; then meet "$name" "$repo/.cruft.json"; fi
+  done
+else
+  : "${GITLAB_TOKEN:?zet GITLAB_TOKEN (in config.env of je shell)}"
+  : "${GITLAB_GROUP:?zet GITLAB_GROUP (in config.env of je shell)}"
+  vereist curl
+  # shellcheck disable=SC2086
+  uitsluit="$(repo_regex ${UITSLUITLIJST:-} || true)"
+  projecten="$(groep_projecten)" || { echo "kon de projecten niet opvragen bij GitLab" >&2; exit 2; }
+  while IFS=$'\t' read -r id pad ref; do
+    [ -n "$id" ] || continue
+    if [ -n "$uitsluit" ] && [[ "$pad" =~ $uitsluit ]]; then continue; fi
+    # Geen .cruft.json = geen template-service; die tellen hier niet mee.
+    gitlab_api "projects/$id/repository/files/.cruft.json/raw?ref=$ref" > "$tmp/cruft.json" 2>/dev/null || continue
+    meet "$pad" "$tmp/cruft.json"
+  done <<< "$projecten"
+fi
+
+if [ ! -s "$uitvoer" ]; then
+  echo "geen template-services gevonden"
+  exit 0
+fi
+printf '%-40s %-20s %-11s %s\n' "service" "template-versie" "achterstand" "nieuwste"
+sort -t$'\t' -k3,3nr -k1,1 "$uitvoer" | while IFS=$'\t' read -r s v a n; do
+  printf '%-40s %-20s %-11s %s\n' "$s" "$v" "$a" "$n"
+done
