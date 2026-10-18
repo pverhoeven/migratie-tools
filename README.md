@@ -19,6 +19,8 @@ transformaties/        cruft-update.sh, recept.sh
 recepten/              Maven-module met de OpenRewrite-recepten (YAML en Java)
 controles/             verify.sh
 lib/                   hulpfuncties
+jenkins/               gereedschap.sh: installeert de tools zonder Docker (voor de Jenkinsfile)
+Jenkinsfile            pipeline: één migratie over de groep, of wekelijks de opschoning
 voorbeeld/             een voorbeeld-template met twee services om mee te oefenen
 ```
 
@@ -208,7 +210,8 @@ commandoregel kan het ook, bv. met `git checkout --theirs -- <bestand>` (templat
 ```
 
 Een herhaalde run slaat services over die de branch van de migratie al hebben.
-Extra multi-gitter-flags geef je achteraan mee (`--repo-include`, `--include-subgroups`, ...).
+Subgroepen van de groep doen mee. Extra multi-gitter-flags geef je achteraan mee
+(`--repo-include`, ...).
 
 Vóór de run vraagt `run.sh` bij GitLab de open MR's met label `migratie` op. Een service
 met een open MR van een *andere* migratie (herkend aan het label met de naam van de migratie) doet niet mee en krijgt de uitkomst
@@ -238,6 +241,26 @@ Dat geldt voor `run.sh` (ook de dry-run) en `uitproberen.sh`.
 Toont per template-service op welke template-commit hij zit en hoeveel commits van het
 template hij achterloopt, de grootste achterstand bovenaan. Handig vóór je een nieuwe
 template-migratie start: services die ver achterlopen krijgen meer kans op conflicten.
+
+## Jenkins
+
+De `Jenkinsfile` draait `run.sh` op een Linux-agent, zonder Docker. De tools (cruft
+2.16.0, multi-gitter, jq) installeert `jenkins/gereedschap.sh` in `.tools/` van de
+workspace, met vaste versies en gecontroleerde downloads; de tweede keer wordt er niets
+meer gedownload. Achter een afgeschermd netwerk komen de downloads via Nexus
+(`PIP_INDEX_URL`, `MULTI_GITTER_BASIS`, `JQ_BASIS` in de `environment` van de
+Jenkinsfile). De agent heeft nodig: bash, git, curl, tar, python3 met venv, Java en
+Maven (met de Nexus-instellingen van jullie andere Maven-builds).
+
+Parameters: `MIGRATIE` (naam of pad), `GO` (uit = dry-run), `REPO_INCLUDE` en
+`ZONDER_VERIFY`. Aan te passen bovenin de Jenkinsfile: het agent-label, de GitLab-groep
+en -URL, de credential-id's (GitLab-token, leesrechten op de template-repo) en de auteur
+van de commits. De artefacten van een build zijn `runs/**`: resultaten.tsv en per
+service de patches en de uitvoer. Is er handwerk nodig, dan wordt de build *unstable*;
+de beschrijving van de build telt de uitkomsten.
+
+Met de cron-trigger aan (staat uit) maakt een geplande build zelf
+`migraties/opschoning-<jaar>-w<week>.env` aan en draait die met `--go`.
 
 ## Tips
 

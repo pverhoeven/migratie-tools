@@ -58,6 +58,7 @@ fi
 args=(run "$ROOT/repo-runner.sh"
   --platform gitlab
   --group "$GITLAB_GROUP"
+  --include-subgroups
   --branch "$BRANCH"
   --manual-commit
   --pr-title "$PR_TITEL"
