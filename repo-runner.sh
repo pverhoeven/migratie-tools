@@ -64,17 +64,28 @@ unset GITLAB_TOKEN
 if [ ! -f pom.xml ]; then
   uitkomst 10 "Niet van toepassing" "geen pom.xml"
 fi
-if [ -n "${CRUFT_UPDATE:-}" ] && [ ! -f .cruft.json ]; then
+if [ -n "${ALLEEN_MET_DEPENDENCY:-}" ] && ! find . -path ./.git -prune -o -name pom.xml -print0 \
+     | xargs -0 grep -qs "<artifactId>$ALLEEN_MET_DEPENDENCY</artifactId>"; then
+  uitkomst 10 "Niet van toepassing" "gebruikt $ALLEEN_MET_DEPENDENCY niet"
+fi
+if [ -n "${CRUFT_UPDATE:-}${CRUFT_ZET:-}" ] && [ ! -f .cruft.json ]; then
+  if [ -n "${ALLEEN_MET_DEPENDENCY:-}" ]; then
+    uitkomst 10 "Niet van toepassing" "afnemer zonder template (geen .cruft.json)"
+  fi
   uitkomst 10 "Niet van toepassing" "geen template-service (geen .cruft.json)"
 fi
 
 start="${BASIS:-$(git rev-parse HEAD)}"
 
-# Transformaties, in vaste volgorde: eerst cruft update, dan het recept.
+# Transformaties, in vaste volgorde: cruft update, variabelen omzetten, recept.
 if [ -n "${CRUFT_UPDATE:-}" ]; then
   echo ">> transformatie: cruft update"
   "$ROOT/transformaties/cruft-update.sh" || handwerk "cruft update mislukt"
 fi
+for z in ${CRUFT_ZET:-}; do
+  echo ">> transformatie: template-variabele $z"
+  "$ROOT/transformaties/cruft-zet.sh" "$z" || handwerk "template-variabele $z omzetten mislukt"
+done
 if [ -n "${RECEPT:-}" ]; then
   echo ">> transformatie: recept $RECEPT"
   "$ROOT/transformaties/recept.sh" || handwerk "recept $RECEPT mislukt"
@@ -94,5 +105,5 @@ if [ "$(git rev-parse HEAD)" = "$start" ]; then
   uitkomst 0 "Ongewijzigd"
 fi
 reden="$(git rev-list --count "$start..HEAD") commit(s)"
-if [ -n "${CRUFT_UPDATE:-}" ]; then reden+=", template $(jq -r '.commit[0:7]' .cruft.json)"; fi
+if [ -n "${CRUFT_UPDATE:-}${CRUFT_ZET:-}" ]; then reden+=", template $(jq -r '.commit[0:7]' .cruft.json)"; fi
 uitkomst 0 "Gewijzigd" "$reden"

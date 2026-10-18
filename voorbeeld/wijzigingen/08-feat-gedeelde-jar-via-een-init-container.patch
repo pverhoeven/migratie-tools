@@ -1,0 +1,128 @@
+diff --git a/cookiecutter.json b/cookiecutter.json
+index b0e6f80..e5e27a3 100644
+--- a/cookiecutter.json
++++ b/cookiecutter.json
+@@ -5,5 +5,6 @@
+   "java_version": "21",
+   "db": false,
+   "liquibase": false,
+-  "_copy_without_render": ["chart/templates/_helpers.tpl", "chart/templates/service.yaml"]
++  "gedeelde_jar": false,
++  "_copy_without_render": ["chart/templates/_helpers.tpl", "chart/templates/service.yaml", "chart/templates/_gedeelde-jar.tpl"]
+ }
+diff --git a/hooks/post_gen_project.py b/hooks/post_gen_project.py
+new file mode 100644
+index 0000000..b2d85a0
+--- /dev/null
++++ b/hooks/post_gen_project.py
+@@ -0,0 +1,7 @@
++"""Haalt onderdelen weg die bij deze service niet horen, zodat een service geen
++ongebruikte bestanden krijgt. Draait alleen bij het genereren; in de services staat niets
++van deze logica."""
++import os
++
++if not {{ cookiecutter.gedeelde_jar }}:
++    os.remove(os.path.join("chart", "templates", "_gedeelde-jar.tpl"))
+diff --git a/{{cookiecutter.project_slug}}/chart/templates/_gedeelde-jar.tpl b/{{cookiecutter.project_slug}}/chart/templates/_gedeelde-jar.tpl
+new file mode 100644
+index 0000000..10a5704
+--- /dev/null
++++ b/{{cookiecutter.project_slug}}/chart/templates/_gedeelde-jar.tpl
+@@ -0,0 +1,22 @@
++{{- /* Gedeelde jar: een init container kopieert de jar uit een eigen image naar een
++       gedeeld volume; de app vindt hem daar via jib's extraClasspath (/gedeeld/*). */ -}}
++
++{{- define "gedeeldeJar.initContainer" -}}
++- name: gedeelde-jar
++  image: "{{ .Values.gedeeldeJar.image }}:{{ .Values.gedeeldeJar.tag }}"
++  command: ["sh", "-c", "cp /jar/*.jar /gedeeld/"]
++  volumeMounts:
++    - name: gedeelde-jar
++      mountPath: /gedeeld
++{{- end -}}
++
++{{- define "gedeeldeJar.volumeMount" -}}
++- name: gedeelde-jar
++  mountPath: /gedeeld
++  readOnly: true
++{{- end -}}
++
++{{- define "gedeeldeJar.volume" -}}
++- name: gedeelde-jar
++  emptyDir: {}
++{{- end -}}
+diff --git a/{{cookiecutter.project_slug}}/chart/templates/deployment.yaml b/{{cookiecutter.project_slug}}/chart/templates/deployment.yaml
+index d1d9cc7..4ee51cd 100644
+--- a/{{cookiecutter.project_slug}}/chart/templates/deployment.yaml
++++ b/{{cookiecutter.project_slug}}/chart/templates/deployment.yaml
+@@ -18,14 +18,19 @@ spec:
+         {{- include "app.selectorLabels" . | nindent 8 }}
+     spec:
+ {%- endraw %}
+-{%- if cookiecutter.liquibase %}{% raw %}
++{%- if cookiecutter.liquibase or cookiecutter.gedeelde_jar %}{% raw %}
+       initContainers:
++{%- endraw %}{% endif %}
++{%- if cookiecutter.liquibase %}{% raw %}
+         - name: liquibase
+           image: "{{ .Values.liquibase.image }}:{{ .Values.liquibase.tag | default .Chart.AppVersion }}"
+           args: ["update"]
+           env:
+             - name: LIQUIBASE_COMMAND_URL
+               value: {{ .Values.datasource.url | quote }}
++{%- endraw %}{% endif %}
++{%- if cookiecutter.gedeelde_jar %}{% raw %}
++        {{- include "gedeeldeJar.initContainer" . | nindent 8 }}
+ {%- endraw %}{% endif %}{% raw %}
+       containers:
+         - name: app
+@@ -48,6 +53,11 @@ spec:
+ {%- endraw %}{% endif %}{% raw %}
+           resources:
+             {{- toYaml .Values.resources | nindent 12 }}
++{%- endraw %}
++{%- if cookiecutter.gedeelde_jar %}{% raw %}
++          volumeMounts:
++            {{- include "gedeeldeJar.volumeMount" . | nindent 12 }}
++{%- endraw %}{% endif %}{% raw %}
+           ports:
+             - name: http
+               containerPort: {{ .Values.service.targetPort }}
+@@ -60,3 +70,7 @@ spec:
+               path: /actuator/health/readiness
+               port: http
+ {%- endraw %}
++{%- if cookiecutter.gedeelde_jar %}{% raw %}
++      volumes:
++        {{- include "gedeeldeJar.volume" . | nindent 8 }}
++{%- endraw %}{% endif %}
+diff --git a/{{cookiecutter.project_slug}}/chart/values.yaml b/{{cookiecutter.project_slug}}/chart/values.yaml
+index 29025ab..3285a7f 100644
+--- a/{{cookiecutter.project_slug}}/chart/values.yaml
++++ b/{{cookiecutter.project_slug}}/chart/values.yaml
+@@ -30,3 +30,9 @@ liquibase:
+   image: registry.example.com/voorbeeld/{{ cookiecutter.project_slug }}-liquibase
+   tag: ""
+ {%- endif %}
++{%- if cookiecutter.gedeelde_jar %}
++
++gedeeldeJar:
++  image: registry.example.com/voorbeeld/gedeelde-jar
++  tag: "1.0.0"
++{%- endif %}
+diff --git a/{{cookiecutter.project_slug}}/pom.xml b/{{cookiecutter.project_slug}}/pom.xml
+index 3a0d902..21d37ac 100644
+--- a/{{cookiecutter.project_slug}}/pom.xml
++++ b/{{cookiecutter.project_slug}}/pom.xml
+@@ -55,6 +55,11 @@
+                         <ports>
+                             <port>8080</port>
+                         </ports>
++{%- if cookiecutter.gedeelde_jar %}
++                        <extraClasspath>
++                            <path>/gedeeld/*</path>
++                        </extraClasspath>
++{%- endif %}
+                     </container>
+                 </configuration>
+             </plugin>

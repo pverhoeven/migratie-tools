@@ -1,0 +1,13 @@
+# Voorbeeld van een feature-migratie: de gedeelde jar komt bij het draaien uit een init
+# container (template-variabele gedeelde_jar), dus de service hoeft hem niet meer mee te
+# leveren. Draai samen met CRUFT_ZET='gedeelde_jar=true' (zie voorbeeld/gedeelde-jar.env).
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: local.migratietools.GedeeldeJarProvided
+displayName: Gedeelde jar als provided
+description: Zet de dependency nl.voorbeeld:gedeelde-jar op scope provided.
+recipeList:
+  - org.openrewrite.maven.ChangeDependencyScope:
+      groupId: nl.voorbeeld
+      artifactId: gedeelde-jar
+      newScope: provided

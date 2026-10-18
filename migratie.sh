@@ -53,12 +53,14 @@ zet_in_bestand() {  # <bestand> <key> <waarde>
 # --- migraties en recepten -----------------------------------------------------------
 
 beschrijf() {  # <migratiebestand>: korte omschrijving van wat de migratie doet
-  local d=() r
-  grep -qE '^CRUFT_UPDATE=["'\'']?ja' "$1" && d+=("cruft update")
-  r="$(sed -nE "s/^RECEPT=[\"']?([^\"']*)[\"']?$/\1/p" "$1")"
-  [ -n "$r" ] && d+=("recept ${r##*.}")
+  local d=() w
+  w="$(bash -c 'set -a; . "$1"; printf "%s|%s|%s|%s" "${CRUFT_UPDATE:-}" "${CRUFT_ZET:-}" "${RECEPT:-}" "${ALLEEN_MET_DEPENDENCY:-}"' _ "$1")"
+  IFS='|' read -r cruft zet recept alleen <<< "$w"
+  [ -n "$cruft" ] && d+=("cruft update")
+  [ -n "$zet" ] && d+=("$zet")
+  [ -n "$recept" ] && d+=("recept ${recept##*.}")
   local IFS=,
-  echo "${d[*]:-?}" | sed 's/,/ + /g'
+  echo "$(echo "${d[*]:-?}" | sed 's/,/ + /g')${alleen:+ (alleen met $alleen)}"
 }
 
 recepten() {  # alle recepten uit recepten/ (YAML-namen en Java-klassen)
@@ -69,17 +71,26 @@ recepten() {  # alle recepten uit recepten/ (YAML-namen en Java-klassen)
 kebab() { sed -E 's/([a-z0-9])([A-Z])/\1-\2/g' <<< "$1" | tr '[:upper:]' '[:lower:]'; }
 
 nieuwe_migratie() {  # maakt migraties/<naam>.env aan; het pad komt in MIGRATIEBESTAND
-  local cruft=0 recept="" naam titel lijst=()
+  local cruft=0 zet="" alleen="" recept="" naam titel lijst=() delen=()
   ja "Cruft update meenemen (services bijwerken naar de nieuwste stand van het template)?" j && cruft=1
+  vraag "Template-variabele omzetten? (bv. gedeelde_jar=true; leeg = nee)" ""
+  zet="$ANTWOORD"
+  if [ -n "$zet" ]; then
+    [[ "$zet" == ?*=* ]] || { echo "gebruik <variabele>=<waarde>" >&2; exit 2; }
+    vraag "Alleen services met deze dependency? (artifactId; leeg = alle services)" ""
+    alleen="$ANTWOORD"
+  fi
   while IFS= read -r r; do lijst+=("$r"); done < <(recepten | sort)
   kies "Recept uit recepten/ (OpenRewrite)?" "geen" "${lijst[@]}"
   [ "$KEUZE" -gt 1 ] && recept="${lijst[$((KEUZE - 2))]}"
-  if [ "$cruft" -eq 0 ] && [ -z "$recept" ]; then
-    echo "een migratie heeft een cruft update en/of een recept nodig" >&2; exit 2
+  if [ "$cruft" -eq 0 ] && [ -z "$zet" ] && [ -z "$recept" ]; then
+    echo "een migratie heeft een cruft update, een variabele en/of een recept nodig" >&2; exit 2
   fi
-  naam="cruft-update"
-  [ -n "$recept" ] && naam="$(kebab "${recept##*.}")"
-  [ "$cruft" -eq 1 ] && [ -n "$recept" ] && naam="cruft-update-en-$naam"
+
+  [ "$cruft" -eq 1 ] && delen+=("cruft-update")
+  [ -n "$zet" ] && delen+=("$(tr '_=' '--' <<< "${zet%%=*}")")
+  [ -n "$recept" ] && delen+=("$(kebab "${recept##*.}")")
+  naam="$(IFS=-; echo "${delen[*]}")"
   while :; do
     vraag "Naam van de migratie" "$naam-$(date +%Y-%m-%d)"
     naam="$ANTWOORD"
@@ -87,13 +98,16 @@ nieuwe_migratie() {  # maakt migraties/<naam>.env aan; het pad komt in MIGRATIEB
     elif [ -e "$ROOT/migraties/$naam.env" ]; then echo "migraties/$naam.env bestaat al"
     else break; fi
   done
-  if [ "$cruft" -eq 1 ] && [ -n "$recept" ]; then titel="chore(migratie): cruft update en ${recept##*.}"
+  if [ -n "$zet" ]; then titel="feat(cruft): ${zet%%=*}${alleen:+ voor services met $alleen}"
+  elif [ "$cruft" -eq 1 ] && [ -n "$recept" ]; then titel="chore(migratie): cruft update en ${recept##*.}"
   elif [ "$cruft" -eq 1 ]; then titel="chore(cruft): bijwerken naar de nieuwste stand van het template"
   else titel="chore(recept): ${recept##*.}"; fi
   MIGRATIEBESTAND="$ROOT/migraties/$naam.env"
   {
     echo "# Aangemaakt met migratie.sh op $(date +%Y-%m-%d)."
+    [ -n "$alleen" ] && echo "ALLEEN_MET_DEPENDENCY=$alleen"
     [ "$cruft" -eq 1 ] && echo "CRUFT_UPDATE=ja"
+    [ -n "$zet" ] && echo "CRUFT_ZET='$zet'"
     [ -n "$recept" ] && echo "RECEPT=$recept"
   } > "$MIGRATIEBESTAND"
   NIEUWE_TITEL="$titel"

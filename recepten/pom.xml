@@ -43,6 +43,10 @@
             <groupId>org.openrewrite</groupId>
             <artifactId>rewrite-java</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.openrewrite</groupId>
+            <artifactId>rewrite-maven</artifactId>
+        </dependency>
         <!-- Publieke recepten die de YAML-recepten hier aanroepen (versies uit de BOM).
              Let op: deze vallen onder de Moderne Source Available License. -->
         <dependency>

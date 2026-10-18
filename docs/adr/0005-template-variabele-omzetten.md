@@ -14,9 +14,13 @@ Alleen variabelen die veilig om te zetten zijn: geen private variabelen, geen af
 variabelen (standaardwaarde met `{{ }}`) en geen variabelen waar andere van afgeleid zijn.
 Bij die laatste twee zouden de afgeleide waarden in `.cruft.json` niet meeveranderen.
 
-Het is een losse opdracht per service en geen migratie over de groep: een variabele
-omzetten is een keuze per service. De branch heet wel `migratie/cruft-zet-<variabele>`,
-zodat hij meetelt voor "per service hooguit één open migratie-PR" (ADR 0001).
+Meestal is het een keuze per service: dan gebruik je `cruft-zet.sh`, met de branch
+`migratie/cruft-zet-<variabele>`, zodat hij meetelt voor "per service hooguit één open
+migratie-PR" (ADR 0001). Voor een feature die veel services tegelijk nodig hebben, kan het
+ook in een migratie (`CRUFT_ZET`), na de cruft update en vóór het recept, met dezelfde
+transformatie (`transformaties/cruft-zet.sh`). `ALLEEN_MET_DEPENDENCY` beperkt zo'n
+migratie dan tot de services die het betreft; zonder die regel zou de variabele bij alle
+services omgaan.
 
 Overwogen: `cruft update --variables-to-update`, dat het omzetten combineert met een
 update naar de nieuwste stand in één patch, met dezelfde nadelen als in ADR 0004.

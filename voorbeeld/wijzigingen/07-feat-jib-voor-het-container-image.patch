@@ -1,0 +1,26 @@
+diff --git a/{{cookiecutter.project_slug}}/pom.xml b/{{cookiecutter.project_slug}}/pom.xml
+index f522a2a..3a0d902 100644
+--- a/{{cookiecutter.project_slug}}/pom.xml
++++ b/{{cookiecutter.project_slug}}/pom.xml
+@@ -43,6 +43,21 @@
+                 <groupId>org.springframework.boot</groupId>
+                 <artifactId>spring-boot-maven-plugin</artifactId>
+             </plugin>
++            <plugin>
++                <groupId>com.google.cloud.tools</groupId>
++                <artifactId>jib-maven-plugin</artifactId>
++                <version>3.4.6</version>
++                <configuration>
++                    <to>
++                        <image>registry.example.com/voorbeeld/{{ cookiecutter.project_slug }}</image>
++                    </to>
++                    <container>
++                        <ports>
++                            <port>8080</port>
++                        </ports>
++                    </container>
++                </configuration>
++            </plugin>
+         </plugins>
+     </build>
+ </project>

@@ -35,6 +35,7 @@ Of start gewoon `migratie.sh`; dat vraagt het allemaal en toont het commando dat
 |---|---|
 | `repo-runner.sh` | Draait één migratie in één service: bepaalt of ze van toepassing is, draait de transformaties en de controle en geeft de uitkomst (Gewijzigd, Ongewijzigd, Niet van toepassing, Handwerk nodig) |
 | `transformaties/cruft-update.sh` | De cruft update: bijwerken naar de nieuwste stand van het template, commit voor commit, met echte git-conflicten (ADR 0004) |
+| `transformaties/cruft-zet.sh` | Een template-variabele omzetten in één service; gebruikt door `CRUFT_ZET` en door `cruft-zet.sh` (ADR 0005) |
 | `transformaties/recept.sh` | Eén OpenRewrite-recept uit `recepten/` draaien via de Maven-plugin |
 | `controles/verify.sh` | Build en tests (`mvn verify`); draait daarna alles terug wat de build wijzigde |
 | `lib/template.sh` | Het template genereren en 3-way mergen; gedeeld door de cruft update en `cruft-zet.sh` |
@@ -101,14 +102,31 @@ het daarna of het echt moet (`--go`).
 
 ## Een migratie maken
 
-Kopieer `migraties/_voorbeeld.env` naar `migraties/<naam>.env`:
+Kopieer `migraties/_voorbeeld.env` naar `migraties/<naam>.env` (of gebruik het menu).
+Elke regel betekent één ding:
+
+| Regel | Betekenis |
+|---|---|
+| `ALLEEN_MET_DEPENDENCY=gedeelde-jar` | optioneel: alleen services met deze dependency (artifactId) in een `pom.xml` doen mee; de rest krijgt "Niet van toepassing". Zonder deze regel: alle services |
+| `CRUFT_UPDATE=ja` | het template bijwerken naar de nieuwste stand (cruft update) |
+| `CRUFT_ZET='gedeelde_jar=true'` | een of meer template-variabelen omzetten (zoals `cruft-zet.sh`), gescheiden door spaties |
+| `RECEPT=local.migratietools.…` | één OpenRewrite-recept uit `recepten/` |
+| `BRANCH=…`, `PR_TITEL='…'` | optioneel; standaard `migratie/<naam>` en `chore(migratie): <naam>` |
+
+Minstens één van `CRUFT_UPDATE`, `CRUFT_ZET` en `RECEPT`; ze draaien in deze volgorde, met
+daarna de controle `verify`. Een feature die zowel het template als de code van de
+services raakt, is zo één migratie, bv. (zie `voorbeeld/gedeelde-jar.env`):
 
 ```bash
-CRUFT_UPDATE=ja                                  # naar de nieuwste stand van het template
-RECEPT=local.migratietools.SpringBoot35          # en/of één recept uit recepten/
-BRANCH=migratie/spring-boot-3.5                  # optioneel, standaard migratie/<naam>
-PR_TITEL='chore(deps): Spring Boot 3.5'          # optioneel, standaard chore(migratie): <naam>
+# Gedeelde jar via een init container, voor alle services die hem gebruiken.
+ALLEEN_MET_DEPENDENCY=gedeelde-jar
+CRUFT_UPDATE=ja
+CRUFT_ZET='gedeelde_jar=true'
+RECEPT=local.migratietools.GedeeldeJarProvided
 ```
+
+Een afnemer die geen template-service is, krijgt hierbij "Niet van toepassing" met de
+reden "afnemer zonder template"; die werk je met de hand af.
 
 De PR-beschrijving bevat de inhoud van het migratiebestand en de commit van
 migratie-tools, dus de PR legt zelf vast wat er is uitgerold; committen hoeft niet.
@@ -136,6 +154,10 @@ Beschikbare recepten:
 |---|---|
 | `local.migratietools.WekelijkseOpschoning` | kleine, idempotente opschoning om wekelijks te draaien: ongebruikte imports, velden, methodes en variabelen, omslachtige booleans, diamond-operator, `@Override`, geparametriseerde SLF4J-logregels, `printStackTrace` naar de logger, JUnit 5-opschoning, overbodige `@Autowired` op constructors |
 | `local.migratietools.OpruimenDebugOutput` | voorbeeld: `System.out.println` weg |
+| `local.migratietools.GedeeldeJarProvided` | voorbeeld van een feature: de dependency `nl.voorbeeld:gedeelde-jar` op `provided` (samen met `CRUFT_ZET='gedeelde_jar=true'`) |
+
+Recepten en migraties van je eigen organisatie (eigen groupId's, interne namen) horen
+niet in deze publieke repo. Zet ze in een interne kopie van migratie-tools.
 
 Voor een wekelijkse opschoning maak je elke week een migratiebestand, bv.
 `migraties/opschoning-2026-w42.env` met `RECEPT=local.migratietools.WekelijkseOpschoning`.

@@ -2,12 +2,14 @@
 # Laadt een migratie (wordt gesourced door de scripts in de root). Een migratie
 # geef je op als pad naar een migratiebestand of als naam uit migraties/.
 #
-# Een migratiebestand migraties/<naam>.env bevat (minstens één transformatie):
-#   CRUFT_UPDATE=ja     cruft update: de template-service bijwerken naar de nieuwste
-#                       stand van het template (de commits leggen vast welke)
-#   RECEPT              naam van één OpenRewrite-recept uit recepten/
-#   BRANCH              optioneel; standaard migratie/<naam>
-#   PR_TITEL            optioneel; standaard chore(migratie): <naam>
+# Een migratiebestand migraties/<naam>.env bevat (minstens één transformatie; zie
+# migraties/_voorbeeld.env voor uitleg per regel):
+#   ALLEEN_MET_DEPENDENCY  optioneel; alleen services met deze dependency (artifactId)
+#   CRUFT_UPDATE=ja        de template-service bijwerken naar de nieuwste stand
+#   CRUFT_ZET              template-variabele(n) omzetten, bv. 'gedeelde_jar=true'
+#   RECEPT                 naam van één OpenRewrite-recept uit recepten/
+#   BRANCH                 optioneel; standaard migratie/<naam>
+#   PR_TITEL               optioneel; standaard chore(migratie): <naam>
 # De PR-beschrijving bevat de inhoud van dit bestand (docs/adr/0002). Branch en titel
 # staan in het bestand, zodat herhaalde runs dezelfde branch gebruiken.
 # De naam van het bestand is de naam van de migratie en van de branch.
@@ -33,7 +35,7 @@ laad_migratie() {  # <naam of pad>
   fi
 
   # Waarden horen uit het migratiebestand te komen, niet uit config.env of de shell.
-  unset CRUFT_UPDATE TEMPLATE_UPDATE TEMPLATE_VERSION RECEPT BRANCH PR_TITEL
+  unset CRUFT_UPDATE CRUFT_ZET ALLEEN_MET_DEPENDENCY TEMPLATE_UPDATE TEMPLATE_VERSION RECEPT BRANCH PR_TITEL
   set -a; . "$bestand"; set +a
   export MIGRATIE
 
@@ -44,8 +46,15 @@ laad_migratie() {  # <naam of pad>
     ""|ja) ;;
     *) echo "$bestand: CRUFT_UPDATE moet 'ja' zijn of ontbreken" >&2; exit 2 ;;
   esac
-  if [ -z "${CRUFT_UPDATE:-}" ] && [ -z "${RECEPT:-}" ]; then
-    echo "$bestand: zet CRUFT_UPDATE=ja en/of RECEPT" >&2; exit 2
+  if [ -z "${CRUFT_UPDATE:-}${CRUFT_ZET:-}${RECEPT:-}" ]; then
+    echo "$bestand: zet minstens één van CRUFT_UPDATE=ja, CRUFT_ZET of RECEPT" >&2; exit 2
+  fi
+  local z
+  for z in ${CRUFT_ZET:-}; do
+    [[ "$z" == ?*=* ]] || { echo "$bestand: CRUFT_ZET bevat '$z'; gebruik <variabele>=<waarde>" >&2; exit 2; }
+  done
+  if [ -n "${ALLEEN_MET_DEPENDENCY:-}" ] && ! [[ "$ALLEEN_MET_DEPENDENCY" =~ ^[A-Za-z0-9._-]+$ ]]; then
+    echo "$bestand: ALLEEN_MET_DEPENDENCY is een artifactId, bv. gedeelde-jar" >&2; exit 2
   fi
   BRANCH="${BRANCH:-migratie/$MIGRATIE}"
   PR_TITEL="${PR_TITEL:-chore(migratie): $MIGRATIE}"
@@ -129,7 +138,9 @@ pr_beschrijving() {  # <root>
   local inhoud
   inhoud="$(grep -vE '^[[:space:]]*(#|$)' "$MIGRATIE_BESTAND" || true)"
   printf 'Automatisch aangemaakt door migratie-tools, migratie `%s` (migratie-tools %s).\n\n' "$MIGRATIE" "$(tools_versie "$1")"
+  [ -z "${ALLEEN_MET_DEPENDENCY:-}" ] || printf -- '- alleen services met de dependency `%s`\n' "$ALLEEN_MET_DEPENDENCY"
   [ -z "${CRUFT_UPDATE:-}" ] || printf -- '- cruft update naar de nieuwste stand van het template (één commit per template-commit)\n'
+  [ -z "${CRUFT_ZET:-}" ] || printf -- '- template-variabele(n) omzetten: `%s`\n' "$CRUFT_ZET"
   [ -z "${RECEPT:-}" ] || printf -- '- recept `%s`\n' "$RECEPT"
   printf '\nMigratiebestand `%s.env`:\n\n```\n%s\n```\n\n' "$MIGRATIE" "$inhoud"
   printf 'Elke transformatie is een eigen commit. Controleer de diff en merge.\n'

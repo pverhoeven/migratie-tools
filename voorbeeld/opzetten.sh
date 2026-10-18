@@ -3,13 +3,16 @@
 #   template/            git-repo van het template (één commit op main, geen tags)
 #   services/bestel-service, services/klant-service
 #                        gegenereerd uit het template, elk met eigen aanpassingen erbovenop
+#   services/losse-service
+#                        geen template-service, wel afnemer van de gedeelde jar
+# en installeert nl.voorbeeld:gedeelde-jar (voorbeeld/gedeelde-jar) in de lokale ~/.m2.
 # Daarna: voorbeeld/wijzig-template.sh en ./uitproberen.sh voorbeeld/cruft-update.env ...
 # (zie voorbeeld/README.md). Draai opnieuw om helemaal opnieuw te beginnen.
 set -euo pipefail
 HIER="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HIER/.." && pwd)"
 . "$ROOT/lib/common.sh"
-vereist git
+vereist git mvn
 
 DOEL="$ROOT/work/voorbeeld"
 rm -rf "$DOEL"
@@ -19,6 +22,9 @@ git_v() { git -c user.name=voorbeeld -c user.email=voorbeeld@localhost "$@"; }
 cruft_cmd() {
   if command -v cruft >/dev/null; then cruft "$@"; else cruft_python -m cruft "$@"; fi
 }
+
+# De gedeelde jar die afnemers gebruiken (zie voorbeeld/gedeelde-jar.env).
+mvn -B -q -f "$HIER/gedeelde-jar/pom.xml" install
 
 # Het template als eigen git-repo, zoals jullie centrale template-repo.
 cp -R "$HIER/template" "$DOEL/template"
@@ -153,6 +159,35 @@ vervang "$s/src/main/resources/application.properties" "logging.level.root=INFO"
 git -C "$s" add -A && git_v -C "$s" commit -q -m "chore: debug-logging"
 vervang "$s/chart/values.yaml" "jdbc:postgresql://postgres:5432/klantservice" "jdbc:postgresql://klant-db:5432/klantservice"
 git -C "$s" add -A && git_v -C "$s" commit -q -m "chore: eigen databasehost"
+# klant-service gebruikt de gedeelde jar (nog als gewone dependency)
+vervang "$s/pom.xml" "    </dependencies>" "        <dependency>
+            <groupId>nl.voorbeeld</groupId>
+            <artifactId>gedeelde-jar</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+    </dependencies>"
+git -C "$s" add -A && git_v -C "$s" commit -q -m "feat: gebruikt de gedeelde jar"
+
+# losse-service: geen template-service, wel afnemer van de gedeelde jar
+s="$DOEL/services/losse-service"
+mkdir -p "$s"
+cat > "$s/pom.xml" <<'POM'
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>nl.voorbeeld</groupId>
+    <artifactId>losse-service</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <dependencies>
+        <dependency>
+            <groupId>nl.voorbeeld</groupId>
+            <artifactId>gedeelde-jar</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+    </dependencies>
+</project>
+POM
+git -C "$s" init -q -b main && git -C "$s" add -A && git_v -C "$s" commit -q -m "feat: losse service zonder template"
 
 echo "voorbeeld opgezet in $DOEL"
 echo "volgende stap: $HIER/wijzig-template.sh"
