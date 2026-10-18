@@ -240,7 +240,9 @@ TEMPLATE_REF=feature/mijn-wijziging ./uitproberen.sh cruft-update ~/code/service
 ```
 
 Stopt een service op een commit van jouw branch, dan veroorzaakt jouw wijziging het
-conflict; stopt hij eerder, dan zat de service al vast. `run.sh --go` weigert
+conflict; stopt hij eerder, dan zat de service al vast. Services van een ander template
+(waar jouw branch niet in staat) krijgen "Niet van toepassing", dus je kunt over alle
+services draaien. Doet er geen enkele service mee, controleer dan de branchnaam. `run.sh --go` weigert
 `TEMPLATE_REF`: MR's horen bij de standaardbranch van het template.
 
 ## In je eigen clone

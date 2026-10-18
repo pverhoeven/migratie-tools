@@ -10,6 +10,8 @@
 #     template-commit met scope cruft, bv. "fix(cruft): logging op warn (777021d)"
 # Met TEMPLATE_REF=<branch of commit> is het doel die ref in plaats van de standaardbranch:
 # een template-wijziging uitproberen vóór die gemerged is (niet voor een echte run).
+# Heeft het template van de service die ref niet (een ander template), dan exit 10:
+# niet van toepassing.
 # Bij het eerste conflict stopt de update, met diff3-conflictmarkers in de bestanden.
 # De conflicten staan ook als echte git-conflicten in de index (basis, service,
 # template), zodat een IDE (bv. IntelliJ: Git > Resolve Conflicts) ze 3-way kan mergen.
@@ -34,7 +36,8 @@ tpl() { git -C "$tmp/template" "$@"; }
 huidig="$(jq -r .commit .cruft.json)"
 if [ -n "${TEMPLATE_REF:-}" ]; then
   doel="$(tpl rev-parse -q --verify "origin/$TEMPLATE_REF^{commit}" || tpl rev-parse -q --verify "$TEMPLATE_REF^{commit}")" \
-    || { reden "TEMPLATE_REF $TEMPLATE_REF bestaat niet in het template; is de branch gepusht?"; exit 1; }
+    || { naam="$(basename "$(jq -r .template .cruft.json)" .git)"
+         reden "template $naam heeft geen $TEMPLATE_REF"; exit 10; }
   echo "template-ref $TEMPLATE_REF ($(tpl rev-parse --short "$doel")) in plaats van de standaardbranch"
 else
   doel="$(tpl rev-parse HEAD)"

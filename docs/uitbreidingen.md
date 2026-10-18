@@ -71,10 +71,9 @@ template-variabele zetten), de teams vooraf waarschuwen, of bewust mergen.
 
 - Er is al: `uitproberen.sh` met `TEMPLATE_REF=<branch>` (handmatig een gepushte
   template-branch uitproberen, zie de README), `--zonder-verify`, `lib/samenvatting.sh`
-  en de stop-commit per service in `resultaten.tsv`.
+  de stop-commit per service in `resultaten.tsv`, en "Niet van toepassing" voor services
+  van een ander template (dat de branch niet heeft).
 - Nodig:
-  - Een filter op de template-URL in `.cruft.json`, als jullie meerdere templates
-    hebben.
   - Een pipeline op de template-repo die migratie-tools aanroept en het MR-commentaar
     plaatst.
 

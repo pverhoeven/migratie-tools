@@ -83,7 +83,11 @@ start="${BASIS:-$(git rev-parse HEAD)}"
 # Transformaties, in vaste volgorde: cruft update, variabelen omzetten, recept.
 if [ -n "${CRUFT_UPDATE:-}" ]; then
   echo ">> transformatie: cruft update"
-  "$ROOT/transformaties/cruft-update.sh" || handwerk "cruft update mislukt"
+  "$ROOT/transformaties/cruft-update.sh" || {
+    # 10: het template van de service heeft de TEMPLATE_REF niet (een ander template)
+    [ $? -eq 10 ] && uitkomst 10 "Niet van toepassing" "$(cat "$REDEN_BESTAND")"
+    handwerk "cruft update mislukt"
+  }
 fi
 for z in ${CRUFT_ZET:-}; do
   echo ">> transformatie: template-variabele $z"
