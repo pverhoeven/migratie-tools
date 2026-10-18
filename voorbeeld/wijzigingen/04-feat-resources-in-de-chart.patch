@@ -1,21 +1,21 @@
 diff --git a/{{cookiecutter.project_slug}}/chart/templates/deployment.yaml b/{{cookiecutter.project_slug}}/chart/templates/deployment.yaml
-index dafc1fe..c7a28ca 100644
+index 69faf92..3485ec5 100644
 --- a/{{cookiecutter.project_slug}}/chart/templates/deployment.yaml
 +++ b/{{cookiecutter.project_slug}}/chart/templates/deployment.yaml
-@@ -18,6 +18,8 @@ spec:
-         - name: app
-           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-           imagePullPolicy: {{ .Values.image.pullPolicy }}
+@@ -41,6 +41,8 @@ spec:
+                   name: {{ .Values.datasource.existingSecret }}
+                   key: password
+ {%- endraw %}{% endif %}{% raw %}
 +          resources:
 +            {{- toYaml .Values.resources | nindent 12 }}
            ports:
              - name: http
                containerPort: {{ .Values.service.targetPort }}
 diff --git a/{{cookiecutter.project_slug}}/chart/values.yaml b/{{cookiecutter.project_slug}}/chart/values.yaml
-index d1bc3e8..c6d374b 100644
+index fd9a3cf..4eea727 100644
 --- a/{{cookiecutter.project_slug}}/chart/values.yaml
 +++ b/{{cookiecutter.project_slug}}/chart/values.yaml
-@@ -9,3 +9,10 @@ service:
+@@ -9,6 +9,13 @@ service:
    type: ClusterIP
    port: 80
    targetPort: 8080
@@ -26,3 +26,6 @@ index d1bc3e8..c6d374b 100644
 +    memory: 256Mi
 +  limits:
 +    memory: 512Mi
+ {%- if cookiecutter.db %}
+ 
+ datasource:

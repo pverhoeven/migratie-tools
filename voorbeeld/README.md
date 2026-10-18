@@ -11,13 +11,29 @@ voorbeeld/wijzig-template.sh   # vier template-commits (zie wijzigingen/)
     work/voorbeeld/services/bestel-service work/voorbeeld/services/klant-service
 ```
 
+Het template heeft twee variabelen die per service in `.cruft.json` staan:
+
+| Variabele | Effect in de service |
+|---|---|
+| `db` | sectie `datasource` in `values.yaml`, datasource-env in `deployment.yaml` |
+| `liquibase` | sectie `liquibase` in `values.yaml`, init container in `deployment.yaml` |
+
+bestel-service heeft `db`, klant-service `db` en `liquibase`. Cookiecutter rendert de
+if-blokken weg: in de services staat gewone YAML, zonder Jinja en zonder Helm-`if`'s
+voor dingen die ze niet hebben. Daarom wordt `deployment.yaml` wél door cookiecutter
+gerenderd; de Helm-expressies staan in het template tussen `{% raw %}`.
+
 De template-commits: actuator en health-probes, Spring Boot 3.5.7, logging op WARN,
-resources in de Helm-chart.
+resources in de Helm-chart, de datasource-pool begrenzen (`maximumPoolSize`), en
+liquibase krijgt de datasource-URL mee.
 
 - **bestel-service** heeft eigen aanpassingen die niet botsen met het template; de
-  migratie geeft vier commits, één per template-commit, en een groene build.
+  migratie geeft zes commits, één per template-commit, en een groene build. De
+  liquibase-wijziging raakt alleen `.cruft.json`, want bestel-service heeft geen liquibase.
 - **klant-service** heeft de logging op `DEBUG` gezet: de update stopt bij de
-  template-commit "logging op warn" met een conflict in `application.properties`.
+  template-commit "logging op warn" met een conflict in `application.properties`. Na
+  `--verder` volgen de chart-wijzigingen, en blijft zijn eigen databasehost
+  (`klant-db`) gewoon staan naast de nieuwe `maximumPoolSize`.
 
 Het conflict afmaken: open `work/klant-service` in IntelliJ, kies *Git → Resolve
 Conflicts…* en kies in `application.properties` een waarde (of haal de markers met de
@@ -66,5 +82,11 @@ git -C work/bestel-service show
 Draai je de opschoning daarna nog een keer, dan is de uitkomst "Ongewijzigd".
 
 Een eigen template-wijziging proberen: pas `work/voorbeeld/template` aan, commit op
-`main` en draai de migratie opnieuw. Helm-templates in `chart/templates/` worden niet
+`main` en draai de migratie opnieuw.
+
+Let op: een variabele achteraf aanzetten (bv. `liquibase` op `true` zetten in de
+`.cruft.json` van bestel-service) voegt bij de volgende cruft update de init container
+níet toe. De update past alleen wijzigingen van het template toe; voor de service ziet
+het eruit alsof hij die onderdelen bewust heeft weggelaten. Zo werkt `cruft update`
+zelf ook. Helm-templates in `chart/templates/` worden niet
 door cookiecutter gerenderd (`_copy_without_render`), omdat ze zelf `{{ }}` gebruiken.

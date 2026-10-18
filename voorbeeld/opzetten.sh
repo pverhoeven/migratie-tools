@@ -26,9 +26,9 @@ git -C "$DOEL/template" init -q -b main
 git -C "$DOEL/template" add -A
 git_v -C "$DOEL/template" commit -q -m "feat: eerste versie van het template"
 
-genereer() {  # <projectnaam>
+genereer() {  # <extra context als JSON>, bv. {"project_name": "Bestel Service", "db": true}
   cruft_cmd create --no-input --output-dir "$DOEL/services" \
-    --extra-context "{\"project_name\": \"$1\"}" "$DOEL/template" >/dev/null
+    --extra-context "$1" "$DOEL/template" >/dev/null
 }
 vervang() {  # <bestand> <oud> <nieuw>: eerste voorkomen, letterlijk
   python3 - "$@" <<'PY'
@@ -40,8 +40,8 @@ open(f, "w").write(s.replace(old, new, 1))
 PY
 }
 
-# bestel-service: aanpassingen die niet botsen met het template
-genereer "Bestel Service"
+# bestel-service: met database, zonder liquibase; aanpassingen die niet botsen met het template
+genereer '{"project_name": "Bestel Service", "db": true}'
 s="$DOEL/services/bestel-service"
 git -C "$s" init -q -b main && git -C "$s" add -A && git_v -C "$s" commit -q -m "chore: gegenereerd uit het template"
 printf 'bestel.max-items=10\n' >> "$s/src/main/resources/application.properties"
@@ -144,12 +144,15 @@ public class BestelServiceTest {
 JAVA
 git -C "$s" add -A && git_v -C "$s" commit -q -m "feat: BestelService"
 
-# klant-service: past de logging aan, die later ook in het template verandert
-genereer "Klant Service"
+# klant-service: met database en liquibase; past de logging aan (die later ook in het
+# template verandert) en gebruikt een eigen databasehost
+genereer '{"project_name": "Klant Service", "db": true, "liquibase": true}'
 s="$DOEL/services/klant-service"
 git -C "$s" init -q -b main && git -C "$s" add -A && git_v -C "$s" commit -q -m "chore: gegenereerd uit het template"
 vervang "$s/src/main/resources/application.properties" "logging.level.root=INFO" "logging.level.root=DEBUG"
 git -C "$s" add -A && git_v -C "$s" commit -q -m "chore: debug-logging"
+vervang "$s/chart/values.yaml" "jdbc:postgresql://postgres:5432/klantservice" "jdbc:postgresql://klant-db:5432/klantservice"
+git -C "$s" add -A && git_v -C "$s" commit -q -m "chore: eigen databasehost"
 
 echo "voorbeeld opgezet in $DOEL"
 echo "volgende stap: $HIER/wijzig-template.sh"

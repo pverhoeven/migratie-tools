@@ -1,3 +1,6 @@
+{#- Helm-expressies staan tussen raw, zodat cookiecutter ze ongemoeid laat. Alleen de
+    if-blokken voor db en liquibase zijn cookiecutter; in de services staat alleen YAML. -#}
+{% raw -%}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -14,10 +17,31 @@ spec:
       labels:
         {{- include "app.selectorLabels" . | nindent 8 }}
     spec:
+{%- endraw %}
+{%- if cookiecutter.liquibase %}{% raw %}
+      initContainers:
+        - name: liquibase
+          image: "{{ .Values.liquibase.image }}:{{ .Values.liquibase.tag | default .Chart.AppVersion }}"
+          args: ["update"]
+{%- endraw %}{% endif %}{% raw %}
       containers:
         - name: app
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+{%- endraw %}
+{%- if cookiecutter.db %}{% raw %}
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: {{ .Values.datasource.url | quote }}
+            - name: SPRING_DATASOURCE_USERNAME
+              value: {{ .Values.datasource.username | quote }}
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.datasource.existingSecret }}
+                  key: password
+{%- endraw %}{% endif %}{% raw %}
           ports:
             - name: http
               containerPort: {{ .Values.service.targetPort }}
+{%- endraw %}

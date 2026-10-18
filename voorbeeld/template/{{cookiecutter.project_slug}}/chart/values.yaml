@@ -9,3 +9,16 @@ service:
   type: ClusterIP
   port: 80
   targetPort: 8080
+{%- if cookiecutter.db %}
+
+datasource:
+  url: jdbc:postgresql://postgres:5432/{{ cookiecutter.package_name }}
+  username: {{ cookiecutter.package_name }}
+  existingSecret: {{ cookiecutter.project_slug }}-db
+{%- endif %}
+{%- if cookiecutter.liquibase %}
+
+liquibase:
+  image: registry.example.com/voorbeeld/{{ cookiecutter.project_slug }}-liquibase
+  tag: ""
+{%- endif %}

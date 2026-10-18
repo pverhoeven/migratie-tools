@@ -1,0 +1,25 @@
+diff --git a/{{cookiecutter.project_slug}}/chart/templates/deployment.yaml b/{{cookiecutter.project_slug}}/chart/templates/deployment.yaml
+index 3485ec5..056955d 100644
+--- a/{{cookiecutter.project_slug}}/chart/templates/deployment.yaml
++++ b/{{cookiecutter.project_slug}}/chart/templates/deployment.yaml
+@@ -40,6 +40,8 @@ spec:
+                 secretKeyRef:
+                   name: {{ .Values.datasource.existingSecret }}
+                   key: password
++            - name: SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE
++              value: {{ .Values.datasource.maximumPoolSize | quote }}
+ {%- endraw %}{% endif %}{% raw %}
+           resources:
+             {{- toYaml .Values.resources | nindent 12 }}
+diff --git a/{{cookiecutter.project_slug}}/chart/values.yaml b/{{cookiecutter.project_slug}}/chart/values.yaml
+index 4eea727..29025ab 100644
+--- a/{{cookiecutter.project_slug}}/chart/values.yaml
++++ b/{{cookiecutter.project_slug}}/chart/values.yaml
+@@ -22,6 +22,7 @@ datasource:
+   url: jdbc:postgresql://postgres:5432/{{ cookiecutter.package_name }}
+   username: {{ cookiecutter.package_name }}
+   existingSecret: {{ cookiecutter.project_slug }}-db
++  maximumPoolSize: 10
+ {%- endif %}
+ {%- if cookiecutter.liquibase %}
+ 

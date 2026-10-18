@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Voert de voorbeeldwijzigingen door in het template: elke voorbeeld/wijzigingen/*.patch
 # wordt één commit op main, in volgorde (actuator en health-probes, Spring Boot 3.5.7,
-# logging op WARN, resources in de chart), als conventional commit. Geen tags.
+# logging op WARN, resources in de chart, datasource-pool begrenzen, liquibase krijgt de
+# datasource-URL), als conventional commit. Geen tags.
 # Je kunt het template in work/voorbeeld/template ook zelf wijzigen en committen.
 set -euo pipefail
 HIER="$(cd "$(dirname "$0")" && pwd)"

@@ -1,0 +1,14 @@
+diff --git a/{{cookiecutter.project_slug}}/chart/templates/deployment.yaml b/{{cookiecutter.project_slug}}/chart/templates/deployment.yaml
+index 056955d..d1d9cc7 100644
+--- a/{{cookiecutter.project_slug}}/chart/templates/deployment.yaml
++++ b/{{cookiecutter.project_slug}}/chart/templates/deployment.yaml
+@@ -23,6 +23,9 @@ spec:
+         - name: liquibase
+           image: "{{ .Values.liquibase.image }}:{{ .Values.liquibase.tag | default .Chart.AppVersion }}"
+           args: ["update"]
++          env:
++            - name: LIQUIBASE_COMMAND_URL
++              value: {{ .Values.datasource.url | quote }}
+ {%- endraw %}{% endif %}{% raw %}
+       containers:
+         - name: app
