@@ -90,6 +90,29 @@ eerst met het voorbeeld (`voorbeeld/README.md`) voordat je hem ophoogt.
 cp config.env.example config.env   # GitLab- en Maven-instellingen
 ```
 
+## De eerste keer
+
+Begin met wat niets wijzigt: zo zie je eerst of de toegang en de tools werken, voordat er
+iets naar GitLab gaat.
+
+1. **Klaarzetten.** cruft 2.16.0, `jq`, Java 21 of nieuwer en Maven (zie hierboven). Vul in
+   `config.env` `GITLAB_TOKEN` (een personal access token met `api`-rechten),
+   `GITLAB_GROUP` en, bij self-hosted GitLab, `GITLAB_BASE_URL` in. multi-gitter is pas
+   bij stap 5 nodig.
+2. **`./achterstand.sh`.** Wijzigt niets en test in één keer of het token en de groep
+   kloppen, of de `.cruft.json` van de services te lezen is en of de template-repo's te
+   clonen zijn. Het resultaat is meteen nuttig: per service hoeveel template-commits hij
+   achterloopt. Gaat hier iets mis, dan ligt het aan de toegang, niet aan de migraties.
+3. **`./uitproberen.sh cruft-update <service>`.** Op een verse clone in `work/`, pusht
+   nooit. Test of cruft, Maven en de build van een echte service werken; kies een service
+   die volgens stap 2 weinig achterloopt. Daarna een template-branch:
+   `TEMPLATE_REF=<branch> ./uitproberen.sh cruft-update <service> <service van een ander template>`.
+4. **`./status.sh <migratie>`.** Alleen als er al migratie-MR's zijn; wijzigt niets.
+5. **`run.sh`.** Eerst een dry-run op één service (`--repo-include '<service>'`), dan
+   `--go` op die ene service. Zet vóór de eerste `--go` in GitLab **Pipelines must
+   succeed** aan: MR's worden standaard gemerged zodra hun pipeline slaagt (zie
+   "Automatisch mergen"). Daarna twee of drie services, en dan de hele groep.
+
 ## Het menu
 
 ```bash
