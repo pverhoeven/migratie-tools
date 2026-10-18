@@ -57,10 +57,12 @@ for repo in "$@"; do
   fi
   git -C "$dest" checkout -q -B "$BRANCH"
 
-  if (cd "$dest" && REPOSITORY="$name" "$ROOT/repo-runner.sh"); then
+  status=0
+  (cd "$dest" && REPOSITORY="$name" "$ROOT/repo-runner.sh") || status=$?
+  if [ "$status" -eq 0 ]; then
     echo "--- commits op $BRANCH in $dest:"
     git --no-pager -C "$dest" log --oneline origin/HEAD..HEAD
-  else
+  elif [ "$status" -ne 10 ]; then  # 10: niet van toepassing, niets af te maken
     echo "--- de stand waarin de migratie stopte staat in $dest (git status);"
     echo "    afmaken doe je in je eigen clone met in-repo.sh"
   fi
