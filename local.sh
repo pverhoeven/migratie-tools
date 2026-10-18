@@ -78,7 +78,7 @@ for repo in "$@"; do
   basis="$(git -C "$dest" rev-parse origin/HEAD)"
   if (cd "$dest" && REPOSITORY="$name" BASIS="$basis" "$ROOT/repo-runner.sh"); then
     echo "--- commits op $BRANCH in $dest:"
-    git -C "$dest" log --oneline origin/HEAD..HEAD
+    git --no-pager -C "$dest" log --oneline origin/HEAD..HEAD
     if [ "$verder" -eq 1 ]; then
       echo "--- klaar; push en open de MR zelf (labels: migratie, $MIGRATIE):"
       echo "    git -C $dest push -u origin $BRANCH"

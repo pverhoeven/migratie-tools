@@ -5,8 +5,12 @@
 # nooit gepusht. Conflicten los je op in je IDE (Git > Resolve Conflicts) en daarna:
 # --verder.
 #
-# Gebruik: ./in-repo.sh [--zonder-verify] <migratie> [<repo>]
-#          ./in-repo.sh --verder [--zonder-verify] <migratie> [<repo>]
+# Gebruik: ./in-repo.sh [--zonder-verify] [--niet-wachten] <migratie> [<repo>]
+#          ./in-repo.sh --verder [--zonder-verify] [--niet-wachten] <migratie> [<repo>]
+#
+# Bij handwerk (conflict, rode build) wacht het in de terminal: los het op, druk op
+# Enter en de migratie gaat verder. Met --niet-wachten (of zonder terminal) stopt het en
+# ga je later verder met --verder.
 #   migratie  naam (migraties/<naam>.env) of pad naar een migratiebestand
 #   repo      pad naar de repo (standaard: de huidige map)
 set -euo pipefail
@@ -21,10 +25,12 @@ fi
 
 ZONDER_VERIFY=0
 verder=0
+wachten=1
 while [ $# -gt 0 ]; do
   case "$1" in
     --zonder-verify) ZONDER_VERIFY=1 ;;
     --verder) verder=1 ;;
+    --niet-wachten) wachten=0 ;;
     *) break ;;
   esac
   shift
@@ -53,13 +59,23 @@ if [ -n "${RECEPT:-}" ]; then
 fi
 
 basis="$(git config "branch.$branch.migratiebasis" || git rev-parse HEAD)"
-status=0
-REPOSITORY="$(basename "$repo")" BASIS="$basis" "$ROOT/repo-runner.sh" || status=$?
+resultaat="$(mktemp)"
+trap 'rm -f "$resultaat"' EXIT
+draai() {
+  status=0
+  RESULTATEN="$resultaat" REPOSITORY="$(basename "$repo")" BASIS="$basis" "$ROOT/repo-runner.sh" || status=$?
+}
+draai
+while [ "$status" -eq 20 ] && [ "$wachten" -eq 1 ]; do
+  # De reden zonder de lijst met bestanden; die toont wacht_op_handwerk zelf.
+  wacht_op_handwerk "$(tail -1 "$resultaat" | cut -f3 | sed 's/): .*/)/')" "$0 --verder $1${2:+ $2}" || break
+  draai
+done
 
 case "$status" in
   0)
     echo "--- commits op $branch:"
-    git log --oneline "$basis..HEAD"
+    git --no-pager log --oneline "$basis..HEAD"
     echo "--- push en open de MR zelf (labels: migratie, $MIGRATIE):"
     echo "    git push -u origin $branch"
     echo "--- titel: $PR_TITEL"

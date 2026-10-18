@@ -5,8 +5,11 @@
 # template met de oude en met de nieuwe waarde, met een 3-way-merge (zoals de cruft
 # update). Werkt in een bestaande clone en pusht nooit.
 #
-# Gebruik: ./cruft-zet.sh [--zonder-verify] <variabele>=<waarde> [<repo>]
-#          ./cruft-zet.sh --verder [--zonder-verify] [<repo>]
+# Gebruik: ./cruft-zet.sh [--zonder-verify] [--niet-wachten] <variabele>=<waarde> [<repo>]
+#          ./cruft-zet.sh --verder [--zonder-verify] [--niet-wachten] [<repo>]
+#
+# Bij handwerk (conflict, rode build) wacht het in de terminal tot je het hebt opgelost
+# en op Enter drukt; met --niet-wachten (of zonder terminal) stopt het.
 #   waarde  JSON (true, false, 3) of anders tekst
 #
 # Alleen variabelen die veilig om te zetten zijn: geen private (_...), geen afgeleide
@@ -24,10 +27,12 @@ vereist git jq
 
 zonder_verify=0
 verder=0
+wachten=1
 while [ $# -gt 0 ]; do
   case "$1" in
     --zonder-verify) zonder_verify=1 ;;
     --verder) verder=1 ;;
+    --niet-wachten) wachten=0 ;;
     *) break ;;
   esac
   shift
@@ -44,14 +49,18 @@ afronden() {
   local basis
   if [ "$zonder_verify" -eq 0 ] && [ -f pom.xml ]; then
     echo ">> controle: verify"
-    if ! "$ROOT/controles/verify.sh"; then
+    while ! "$ROOT/controles/verify.sh"; do
+      if [ "$wachten" -eq 1 ] && wacht_op_handwerk "de build is rood (build of tests, zie hierboven)" "$0 --verder"; then
+        echo ">> controle: verify"
+        continue
+      fi
       echo "--- de build is rood; repareer het en draai daarna: $0 --verder" >&2
       exit 20
-    fi
+    done
   fi
   basis="$(git config "branch.$branch.migratiebasis" || git rev-parse HEAD~1)"
   echo "--- commits op $branch:"
-  git log --oneline "$basis..HEAD"
+  git --no-pager log --oneline "$basis..HEAD"
   echo "--- push en open de MR zelf (labels: migratie, cruft-zet):"
   echo "    git push -u origin $branch"
   echo "--- titel: $(git log -1 --format=%s "$(git rev-list --max-count=1 --grep='^feat(cruft): ' HEAD)")"
@@ -130,6 +139,10 @@ if [ ${#MERGE_CONFLICTEN[@]} -gt 0 ]; then
   echo "$bericht" > "$(git rev-parse --git-dir)/MIGRATIE_MSG"
   echo "--- conflicten:" >&2
   printf '    %s\n' "${MERGE_CONFLICTEN[@]}" >&2
+  if [ "$wachten" -eq 1 ] && wacht_op_handwerk "conflict bij het omzetten van $naam" "$0 --verder"; then
+    afronden
+    exit 0
+  fi
   echo "--- los ze op (bv. in IntelliJ: Git > Resolve Conflicts) en draai daarna: $0 --verder" >&2
   exit 20
 fi

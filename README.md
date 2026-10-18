@@ -138,8 +138,6 @@ Heb je de service al als project open, draai de migratie dan direct in die clone
 ```bash
 cd ~/code/service-a                        # schone werkmap, bijgewerkte main
 ~/migratie-tools/in-repo.sh cruft-update   # naam (migraties/<naam>.env) of pad
-# conflict? los op in IntelliJ: Git → Resolve Conflicts…
-~/migratie-tools/in-repo.sh --verder cruft-update
 git push -u origin migratie/cruft-update   # en open de MR zelf
 ```
 
@@ -147,13 +145,22 @@ git push -u origin migratie/cruft-update   # en open de MR zelf
 een vuile werkmap (de controle draait alles terug wat de build wijzigt). Er wordt nooit
 gepusht.
 
+Bij handwerk wacht het in de terminal. Het laat zien wat er aan de hand is (welke
+bestanden een conflict hebben, of dat de build rood is) en wat je moet doen. Los het op,
+bv. in IntelliJ met *Git → Resolve Conflicts…*, en druk op Enter: het controleert of het
+echt opgelost is (geen conflicten of conflictmarkers meer; bij een rode build: er is iets
+aangepast), commit je oplossing en gaat verder, tot het volgende conflict of tot het
+klaar is. Met `q` stop je; later ga je verder met `in-repo.sh --verder <migratie>`.
+Met `--niet-wachten` (of zonder terminal, bv. op Jenkins) stopt het meteen bij handwerk.
+`cruft-zet.sh` werkt hetzelfde.
+
 Conflicten los je op in IntelliJ (*Git → Resolve Conflicts…*); het script draai je gewoon
 in de terminal, bv. die van IntelliJ (⌥F12). Met een alias in je shell-profiel hoef je het
 pad niet te typen:
 
 ```bash
 alias migratie=~/Developer/code/migratie-tools/in-repo.sh
-migratie cruft-update            # en daarna: migratie --verder cruft-update
+migratie cruft-update
 ```
 
 ## Een template-variabele omzetten

@@ -134,3 +134,51 @@ pr_beschrijving() {  # <root>
   printf '\nMigratiebestand `%s.env`:\n\n```\n%s\n```\n\n' "$MIGRATIE" "$inhoud"
   printf 'Elke transformatie is een eigen commit. Controleer de diff en merge.\n'
 }
+
+# Wacht in de terminal tot het handwerk in de huidige repo klaar is: toont wat er moet
+# gebeuren, controleert na Enter of het echt gedaan is (geen onopgeloste conflicten of
+# conflictmarkers; bij een rode build: er is iets aangepast) en commit het via hervat.
+# Geeft 1 als de gebruiker stopt (q) of er geen terminal is.
+wacht_op_handwerk() {  # <reden> <commando om later verder te gaan>
+  local reden="$1" later="$2" conflicten a lijn
+  [ -t 0 ] || return 1
+  conflicten="$(git diff --name-only --diff-filter=U)"
+  lijn="$(printf '%.0s─' $(seq 1 70))"
+  echo
+  echo "$lijn"
+  echo "Handwerk nodig: $reden"
+  echo
+  if [ -n "$conflicten" ]; then
+    echo "Conflicten in:"
+    printf '  %s\n' $conflicten
+    echo
+    echo "Wat te doen:"
+    echo "  1. Open de repo in IntelliJ en kies Git → Resolve Conflicts…"
+    echo "     Links de service, rechts het template, in het midden het resultaat."
+    echo "  2. Klik op Apply. Committen hoeft niet, dat doet de migratie."
+    echo "  3. Kom terug naar deze terminal."
+  else
+    echo "Wat te doen:"
+    echo "  1. Kijk in de uitvoer hierboven wat er misgaat en repareer het in de repo."
+    echo "  2. Committen hoeft niet, dat doet de migratie."
+    echo "  3. Kom terug naar deze terminal; de controle draait dan opnieuw."
+  fi
+  echo "$lijn"
+  while :; do
+    read -r -p "[Enter] = verder met de migratie   q = stoppen: " a || return 1
+    case "$a" in
+      q|Q)
+        echo "gestopt; later verder met: $later"
+        return 1 ;;
+    esac
+    if [ -z "$conflicten" ] && [ -z "$(git status --porcelain)" ]; then
+      echo "er is nog niets aangepast; repareer eerst iets, of stop met q"
+      continue
+    fi
+    if hervat "$PWD"; then
+      echo
+      return 0
+    fi
+    echo "nog niet klaar (zie hierboven); los het op en druk opnieuw op Enter"
+  done
+}
