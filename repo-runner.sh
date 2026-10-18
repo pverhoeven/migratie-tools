@@ -4,7 +4,9 @@
 # staan in de environment. Elke transformatie commit zijn eigen wijzigingen.
 #
 # Optioneel: ZONDER_VERIFY=1 slaat de controle over (alleen bij een dry-run).
-#            RESULTATEN=<bestand>: hier komt één regel met de uitkomst bij.
+#            RESULTATEN=<bestand>: hier komt één regel met de uitkomst bij
+#            (service, uitkomst, reden, stop-commit: de volledige template-commit waar
+#            de cruft update stopte, anders leeg).
 #            DEBUG_MAP=<map>: schrijf per service naar <map>/<service>/ de uitvoer
 #            (uitvoer.log), de commits als patch (wijzigingen.patch) en bij handwerk
 #            de stand waarin de migratie stopte (onafgemaakt.diff, status.txt).
@@ -22,8 +24,9 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 SERVICE="${REPOSITORY:-$(basename "$PWD")}"   # REPOSITORY zet multi-gitter
 
 REDEN_BESTAND="$(mktemp)"
-export REDEN_BESTAND
-trap 'rm -f "$REDEN_BESTAND"' EXIT
+STOP_BESTAND="$(mktemp)"
+export REDEN_BESTAND STOP_BESTAND
+trap 'rm -f "$REDEN_BESTAND" "$STOP_BESTAND"' EXIT
 
 if [ -n "${DEBUG_MAP:-}" ]; then
   DEBUG="$DEBUG_MAP/$SERVICE"
@@ -45,7 +48,7 @@ schrijf_debug() {
 uitkomst() {  # <exit-code> <uitkomst> [reden]
   schrijf_debug
   if [ -n "${RESULTATEN:-}" ]; then
-    printf '%s\t%s\t%s\n' "$SERVICE" "$2" "${3:-}" >> "$RESULTATEN"
+    printf '%s\t%s\t%s\t%s\n' "$SERVICE" "$2" "${3:-}" "$(cat "$STOP_BESTAND")" >> "$RESULTATEN"
   fi
   echo "== $SERVICE: $2${3:+ ($3)}"
   exit "$1"

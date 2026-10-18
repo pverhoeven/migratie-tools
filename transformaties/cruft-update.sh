@@ -93,6 +93,7 @@ for stap in "${stappen[@]}"; do
 
   if [ ${#MERGE_CONFLICTEN[@]} -gt 0 ]; then
     bericht_voor "$stap" > "$MSG_BESTAND"
+    stop_commit "$stap"
     reden "conflict bij template $naar ($onderwerp): $(printf '%s, ' "${MERGE_CONFLICTEN[@]}" | sed 's/, $//')"
     exit 1
   fi

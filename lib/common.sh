@@ -44,6 +44,11 @@ reden() {
   if [ -n "${REDEN_BESTAND:-}" ]; then echo "$*" > "$REDEN_BESTAND"; fi
 }
 
+# De template-commit waar een transformatie stopt; komt als stop-commit in de resultaten.
+stop_commit() {  # <commit>
+  if [ -n "${STOP_BESTAND:-}" ]; then echo "$1" > "$STOP_BESTAND"; fi
+}
+
 # Maak de map voor de resultaten van een run aan en exporteer RESULTATEN.
 nieuwe_run() {  # <root> <migratie>
   local map

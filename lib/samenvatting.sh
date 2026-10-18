@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Toont het resultatenbestand van een run (service<TAB>uitkomst<TAB>reden),
+# Toont het resultatenbestand van een run (service<TAB>uitkomst<TAB>reden<TAB>stop-commit),
 # gegroepeerd per uitkomst, met de werklijst (Handwerk nodig) bovenaan.
 set -euo pipefail
 f="$1"

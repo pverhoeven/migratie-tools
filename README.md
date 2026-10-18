@@ -326,7 +326,11 @@ met een open MR van een *andere* migratie (herkend aan het label met de naam van
 (`config.env`) doen nooit mee.
 
 Elke run schrijft `runs/<migratie>-<tijd>/resultaten.tsv` en toont aan het eind de
-uitkomst per service, met de werklijst (Handwerk nodig) bovenaan.
+uitkomst per service, met de werklijst (Handwerk nodig) bovenaan. Per service één regel,
+met tabs: service, uitkomst, reden en stop-commit. De stop-commit is de volledige
+template-commit waar de cruft update op een conflict stopte, en anders leeg; zo zie je
+bij een [template-branch](#een-template-branch-uitproberen) of het conflict op jouw
+branch zit of al op de standaardbranch.
 
 Om een (dry-)run na te kijken staat per service in `runs/<migratie>-<tijd>/debug/<service>/`:
 
