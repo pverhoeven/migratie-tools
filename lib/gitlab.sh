@@ -7,16 +7,15 @@ gitlab_api() {  # <pad-met-query>; schrijft de JSON naar stdout
     "${GITLAB_BASE_URL:-https://gitlab.com}/api/v4/$1"
 }
 
-# Open MR's van migraties in de groep (label "migratie", branch migratie/<naam>),
-# als regels "<project-pad><TAB><migratie>".
+# Open MR's van migraties in de groep (label "migratie" plus het label met de naam van
+# de migratie), als regels "<project-pad><TAB><overige labels, komma-gescheiden>".
 open_migratie_mrs() {
   local groep page=1 resp n
   groep="$(jq -rn --arg g "$GITLAB_GROUP" '$g | @uri')"
   while :; do
     resp="$(gitlab_api "groups/$groep/merge_requests?state=opened&labels=migratie&per_page=100&page=$page")" || return 1
     n="$(jq length <<< "$resp")"
-    jq -r '.[] | select(.source_branch | startswith("migratie/"))
-           | [(.references.full | sub("!.*$"; "")), (.source_branch | ltrimstr("migratie/"))] | @tsv' <<< "$resp"
+    jq -r '.[] | [(.references.full | sub("!.*$"; "")), ((.labels - ["migratie"]) | join(","))] | @tsv' <<< "$resp"
     [ "$n" -lt 100 ] && break
     page=$((page + 1))
   done

@@ -1,7 +1,11 @@
 # Een migratie is een bestand; herhaalde runs raken bestaande branches niet
 
-Elke migratie staat als bestand in deze repo; de bestandsnaam is de branchnaam. Zo hoort
-een PR bij één concrete migratie in plaats van bij een combinatie van stapnamen. Een herhaalde run slaat
+Elke migratie staat als bestand in deze repo; de bestandsnaam is de naam van de migratie
+en het label op haar PR's. De branch (standaard `migratie/<naam>`) en de PR-titel kunnen
+in het bestand worden aangepast (`BRANCH`, `PR_TITEL`); ze staan juist in het bestand
+zodat elke run van de migratie dezelfde branch gebruikt. Open MR's van een migratie
+herkennen we aan dat label, niet aan de branchnaam. Zo hoort een PR bij één concrete
+migratie in plaats van bij een combinatie van stapnamen. Een herhaalde run slaat
 services over die al een branch voor die migratie hebben (in plaats van die te
 vervangen), omdat handwerk bij "Handwerk nodig" juist op die branch gebeurt: lokaal via
 `local.sh`, er komt dan geen automatische PR. Opnieuw genereren betekent eerst de branch

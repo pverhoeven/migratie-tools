@@ -6,7 +6,10 @@
 #   CRUFT_UPDATE=ja     cruft update: de template-service bijwerken naar de nieuwste
 #                       stand van het template (de commits leggen vast welke)
 #   RECEPT              naam van één OpenRewrite-recept uit recepten/
-# De PR-beschrijving bevat de inhoud van dit bestand (docs/adr/0002).
+#   BRANCH              optioneel; standaard migratie/<naam>
+#   PR_TITEL            optioneel; standaard chore(migratie): <naam>
+# De PR-beschrijving bevat de inhoud van dit bestand (docs/adr/0002). Branch en titel
+# staan in het bestand, zodat herhaalde runs dezelfde branch gebruiken.
 # De naam van het bestand is de naam van de migratie en van de branch.
 
 laad_migratie() {  # <naam of pad>
@@ -30,7 +33,7 @@ laad_migratie() {  # <naam of pad>
   fi
 
   # Waarden horen uit het migratiebestand te komen, niet uit config.env of de shell.
-  unset CRUFT_UPDATE TEMPLATE_UPDATE TEMPLATE_VERSION RECEPT
+  unset CRUFT_UPDATE TEMPLATE_UPDATE TEMPLATE_VERSION RECEPT BRANCH PR_TITEL
   set -a; . "$bestand"; set +a
   export MIGRATIE
 
@@ -44,6 +47,11 @@ laad_migratie() {  # <naam of pad>
   if [ -z "${CRUFT_UPDATE:-}" ] && [ -z "${RECEPT:-}" ]; then
     echo "$bestand: zet CRUFT_UPDATE=ja en/of RECEPT" >&2; exit 2
   fi
+  BRANCH="${BRANCH:-migratie/$MIGRATIE}"
+  PR_TITEL="${PR_TITEL:-chore(migratie): $MIGRATIE}"
+  git check-ref-format --branch "$BRANCH" >/dev/null 2>&1 \
+    || { echo "$bestand: ongeldige branchnaam '$BRANCH'" >&2; exit 2; }
+  export BRANCH PR_TITEL
 }
 
 # Commit het handwerk (opgeloste conflicten of een gerepareerde build) in de repo <dir>,
@@ -53,8 +61,8 @@ hervat() {  # <dir>
   if ! git -C "$dest" rev-parse --git-dir >/dev/null 2>&1; then
     echo "$dest is geen git-repo; draai de migratie eerst zonder --verder" >&2; return 1
   fi
-  if [ "$(git -C "$dest" branch --show-current)" != "migratie/$MIGRATIE" ]; then
-    echo "$dest staat niet op de branch migratie/$MIGRATIE" >&2; return 1
+  if [ "$(git -C "$dest" branch --show-current)" != "$BRANCH" ]; then
+    echo "$dest staat niet op de branch $BRANCH" >&2; return 1
   fi
   if [ -n "$(git -C "$dest" ls-files -u)" ]; then
     echo "er zijn nog onopgeloste conflicten in $dest:" >&2
@@ -88,12 +96,12 @@ hervat() {  # <dir>
 start_branch() {  # <branch>
   local branch="$1" huidige
   huidige="$(git branch --show-current || true)"
-  case "$huidige" in
-    migratie/*)
-      echo "je staat op $huidige: start vanaf main, niet bovenop een andere migratie" >&2
-      echo "ga eerst naar je hoofdbranch (bv. git switch main && git pull)" >&2
-      exit 2 ;;
-  esac
+  # Een migratiebranch herkennen we aan het onthouden beginpunt (of de standaardnaam).
+  if [ -n "$huidige" ] && { git config "branch.$huidige.migratiebasis" >/dev/null || [[ "$huidige" == migratie/* ]]; }; then
+    echo "je staat op $huidige: start vanaf main, niet bovenop een andere migratie" >&2
+    echo "ga eerst naar je hoofdbranch (bv. git switch main && git pull)" >&2
+    exit 2
+  fi
   if git rev-parse -q --verify "refs/heads/$branch" >/dev/null; then
     echo "de branch $branch bestaat al; gebruik --verder, of verwijder de branch om opnieuw te beginnen" >&2
     exit 2

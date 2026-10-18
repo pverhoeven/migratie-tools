@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Lokaal uitvoeren: kloont elke service naar ./work/<naam>, maakt de branch
-# migratie/<naam> aan en draait daar de migratie. Er wordt nooit gepusht.
+# van de migratie aan (standaard migratie/<naam>) en draait daar de migratie. Er wordt
+# nooit gepusht.
 # Je eigen werkmap blijft onaangeroerd; bekijk het resultaat in work/<naam>.
 #
 # Gebruik: ./local.sh [--zonder-verify] <migratiebestand> <repo> [<repo> ...]
@@ -71,17 +72,17 @@ for repo in "$@"; do
       printf '%s\tHandwerk nodig\tclonen mislukt\n' "$name" >> "$RESULTATEN"
       continue
     fi
-    git -C "$dest" checkout -q -B "migratie/$MIGRATIE"
+    git -C "$dest" checkout -q -B "$BRANCH"
   fi
 
   basis="$(git -C "$dest" rev-parse origin/HEAD)"
   if (cd "$dest" && REPOSITORY="$name" BASIS="$basis" "$ROOT/repo-runner.sh"); then
-    echo "--- commits op migratie/$MIGRATIE in $dest:"
+    echo "--- commits op $BRANCH in $dest:"
     git -C "$dest" log --oneline origin/HEAD..HEAD
     if [ "$verder" -eq 1 ]; then
       echo "--- klaar; push en open de MR zelf (labels: migratie, $MIGRATIE):"
-      echo "    git -C $dest push -u origin migratie/$MIGRATIE"
-      echo "--- titel: chore(migratie): $MIGRATIE"
+      echo "    git -C $dest push -u origin $BRANCH"
+      echo "--- titel: $PR_TITEL"
       echo "--- beschrijving:"
       pr_beschrijving "$ROOT" | sed 's/^/    /'
     fi

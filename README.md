@@ -7,6 +7,7 @@ Begrippen staan in [GLOSSARY.md](GLOSSARY.md), besluiten in [docs/adr](docs/adr)
 ## Structuur
 
 ```
+migratie.sh            menu: kies een actie en een migratie, of maak een nieuwe
 run.sh                 één migratie over een GitLab-groep (standaard dry-run)
 local.sh               lokaal: kloont services naar ./work en draait de migratie
 in-repo.sh             lokaal: draait de migratie in een bestaande clone
@@ -47,6 +48,20 @@ eerst met het voorbeeld (`voorbeeld/README.md`) voordat je hem ophoogt.
 cp config.env.example config.env   # GitLab- en Maven-instellingen
 ```
 
+## Het menu
+
+```bash
+./migratie.sh
+```
+
+Het menu vraagt wat je wilt doen (migratie in een repo, lokaal op clones, over de hele
+groep, een template-variabele omzetten of de achterstand bekijken) en welke migratie: een
+bestaande uit `migraties/`, een nieuwe (cruft update en/of een recept uit `recepten/`) of
+een ander migratiebestand. Daarna stelt het de branch en de PR-titel voor; wat je
+aanpast, komt in het migratiebestand. Het toont het commando dat het uitvoert, zodat je
+het ook zonder menu kunt draaien. Bij de hele groep doet het eerst een dry-run en vraagt
+het daarna of het echt moet (`--go`).
+
 ## Een migratie maken
 
 Kopieer `migraties/_voorbeeld.env` naar `migraties/<naam>.env`:
@@ -54,6 +69,8 @@ Kopieer `migraties/_voorbeeld.env` naar `migraties/<naam>.env`:
 ```bash
 CRUFT_UPDATE=ja                                  # naar de nieuwste stand van het template
 RECEPT=local.migratietools.SpringBoot35          # en/of één recept uit recepten/
+BRANCH=migratie/spring-boot-3.5                  # optioneel, standaard migratie/<naam>
+PR_TITEL='chore(deps): Spring Boot 3.5'          # optioneel, standaard chore(migratie): <naam>
 ```
 
 De PR-beschrijving bevat de inhoud van het migratiebestand en de commit van
@@ -126,7 +143,7 @@ cd ~/code/service-a                        # schone werkmap, bijgewerkte main
 git push -u origin migratie/cruft-update   # en open de MR zelf
 ```
 
-`in-repo.sh` maakt de branch `migratie/<naam>` vanaf je huidige commit en weigert bij
+`in-repo.sh` maakt de branch van de migratie vanaf je huidige commit en weigert bij
 een vuile werkmap (de controle draait alles terug wat de build wijzigt). Er wordt nooit
 gepusht.
 
@@ -189,11 +206,11 @@ midden het resultaat, met de vorige stand van het template als basis. Klaar met
 ./run.sh migraties/template-2026-10.env --go                             # de rest
 ```
 
-Een herhaalde run slaat services over die al een branch `migratie/<naam>` hebben.
+Een herhaalde run slaat services over die de branch van de migratie al hebben.
 Extra multi-gitter-flags geef je achteraan mee (`--repo-include`, `--include-subgroups`, ...).
 
 Vóór de run vraagt `run.sh` bij GitLab de open MR's met label `migratie` op. Een service
-met een open MR van een *andere* migratie doet niet mee en krijgt de uitkomst
+met een open MR van een *andere* migratie (herkend aan het label met de naam van de migratie) doet niet mee en krijgt de uitkomst
 "Wacht op vorige migratie"; een latere run pakt hem op. Repo's op de `UITSLUITLIJST`
 (`config.env`) doen nooit mee.
 

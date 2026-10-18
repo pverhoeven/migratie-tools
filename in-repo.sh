@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Draait een migratie in een bestaande lokale clone, bv. het project dat je al in
-# IntelliJ open hebt. Maakt de branch migratie/<naam> vanaf de huidige commit; er wordt
+# IntelliJ open hebt. Maakt de branch van de migratie (standaard migratie/<naam>) vanaf
+# de huidige commit; er wordt
 # nooit gepusht. Conflicten los je op in je IDE (Git > Resolve Conflicts) en daarna:
 # --verder.
 #
@@ -36,7 +37,7 @@ if [ $# -lt 1 ]; then
 fi
 laad_migratie "$1"
 repo="$(git -C "${2:-.}" rev-parse --show-toplevel)" || { echo "${2:-.} is geen git-repo" >&2; exit 2; }
-branch="migratie/$MIGRATIE"
+branch="$BRANCH"
 cd "$repo"
 echo "=== $MIGRATIE in $repo ==="
 
@@ -61,7 +62,7 @@ case "$status" in
     git log --oneline "$basis..HEAD"
     echo "--- push en open de MR zelf (labels: migratie, $MIGRATIE):"
     echo "    git push -u origin $branch"
-    echo "--- titel: chore(migratie): $MIGRATIE"
+    echo "--- titel: $PR_TITEL"
     echo "--- beschrijving:"
     pr_beschrijving "$ROOT" | sed 's/^/    /' ;;
   20)

@@ -63,7 +63,7 @@ if [ "$verder" -eq 1 ]; then
   cd "$(git -C "${1:-.}" rev-parse --show-toplevel)"
   branch="$(git branch --show-current)"
   case "$branch" in
-    migratie/cruft-zet-*) MIGRATIE="${branch#migratie/}" ;;
+    migratie/cruft-zet-*) MIGRATIE="${branch#migratie/}"; BRANCH="$branch" ;;
     *) echo "je staat niet op een cruft-zet-branch (migratie/cruft-zet-...)" >&2; exit 2 ;;
   esac
   hervat "$PWD" || exit 20
@@ -109,6 +109,7 @@ fi
 
 MIGRATIE="cruft-zet-$naam"
 branch="migratie/$MIGRATIE"
+BRANCH="$branch"
 start_branch "$branch"
 
 # Het template op dezelfde commit, met de oude en met de nieuwe waarde.

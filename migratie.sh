@@ -1,0 +1,204 @@
+#!/usr/bin/env bash
+# Interactief menu voor migratie-tools: kies wat je wilt doen en welke migratie (of maak
+# er een), bevestig de branch en de PR-titel, en het menu start het bijbehorende script.
+# De losse scripts (in-repo.sh, local.sh, run.sh, cruft-zet.sh, achterstand.sh) blijven
+# gewoon bruikbaar; het menu toont aan het eind het commando dat het uitvoert.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+
+# --- invoer -----------------------------------------------------------------------
+
+vraag() {  # <tekst> <standaard>; het antwoord komt in ANTWOORD
+  local a
+  read -r -p "$1${2:+ [$2]}: " a
+  ANTWOORD="${a:-$2}"
+}
+
+ja() {  # <tekst> <standaard j|n>; geeft 0 bij ja
+  local a standaard="$2" hint="[j/N]"
+  [ "$standaard" = j ] && hint="[J/n]"
+  read -r -p "$1 $hint " a
+  a="${a:-$standaard}"
+  [[ "$a" == [jJyY]* ]]
+}
+
+kies() {  # <vraag> <optie>...; het nummer (1..n) komt in KEUZE
+  local tekst="$1" i n
+  shift
+  echo "$tekst"
+  i=1
+  for o in "$@"; do printf '  %d) %s\n' "$i" "$o"; i=$((i + 1)); done
+  n=$#
+  while :; do
+    read -r -p "keuze: " KEUZE
+    [[ "$KEUZE" =~ ^[0-9]+$ ]] && [ "$KEUZE" -ge 1 ] && [ "$KEUZE" -le "$n" ] && break
+    echo "kies een nummer van 1 tot en met $n"
+  done
+  echo
+}
+
+# Zet KEY=waarde in een env-bestand (vervangt een bestaande regel, anders erbij).
+zet_in_bestand() {  # <bestand> <key> <waarde>
+  local regel
+  regel="$2='${3//\'/\'\\\'\'}'"
+  if grep -q "^$2=" "$1"; then
+    REGEL="$regel" awk -v k="$2" 'index($0, k "=") == 1 { print ENVIRON["REGEL"]; next } { print }' "$1" > "$1.tmp"
+    mv "$1.tmp" "$1"
+  else
+    printf '%s\n' "$regel" >> "$1"
+  fi
+}
+
+# --- migraties en recepten -----------------------------------------------------------
+
+beschrijf() {  # <migratiebestand>: korte omschrijving van wat de migratie doet
+  local d=() r
+  grep -qE '^CRUFT_UPDATE=["'\'']?ja' "$1" && d+=("cruft update")
+  r="$(sed -nE "s/^RECEPT=[\"']?([^\"']*)[\"']?$/\1/p" "$1")"
+  [ -n "$r" ] && d+=("recept ${r##*.}")
+  local IFS=,
+  echo "${d[*]:-?}" | sed 's/,/ + /g'
+}
+
+recepten() {  # alle recepten uit recepten/ (YAML-namen en Java-klassen)
+  grep -rhE '^name: ' "$ROOT/recepten/src/main/resources/META-INF/rewrite" 2>/dev/null | sed 's/^name: *//'
+  (cd "$ROOT/recepten/src/main/java" 2>/dev/null && grep -rlE 'extends Recipe\b' . | sed 's|^\./||; s|\.java$||; s|/|.|g')
+}
+
+kebab() { sed -E 's/([a-z0-9])([A-Z])/\1-\2/g' <<< "$1" | tr '[:upper:]' '[:lower:]'; }
+
+nieuwe_migratie() {  # maakt migraties/<naam>.env aan; het pad komt in MIGRATIEBESTAND
+  local cruft=0 recept="" naam titel lijst=()
+  ja "cruft update meenemen?" j && cruft=1
+  while IFS= read -r r; do lijst+=("$r"); done < <(recepten | sort)
+  kies "Recept?" "geen" "${lijst[@]}"
+  [ "$KEUZE" -gt 1 ] && recept="${lijst[$((KEUZE - 2))]}"
+  if [ "$cruft" -eq 0 ] && [ -z "$recept" ]; then
+    echo "een migratie heeft een cruft update en/of een recept nodig" >&2; exit 2
+  fi
+  naam="cruft-update"
+  [ -n "$recept" ] && naam="$(kebab "${recept##*.}")"
+  [ "$cruft" -eq 1 ] && [ -n "$recept" ] && naam="cruft-update-en-$naam"
+  while :; do
+    vraag "Naam van de migratie" "$naam-$(date +%Y-%m-%d)"
+    naam="$ANTWOORD"
+    if ! [[ "$naam" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then echo "alleen a-z, 0-9, . _ -"
+    elif [ -e "$ROOT/migraties/$naam.env" ]; then echo "migraties/$naam.env bestaat al"
+    else break; fi
+  done
+  if [ "$cruft" -eq 1 ] && [ -n "$recept" ]; then titel="chore(migratie): cruft update en ${recept##*.}"
+  elif [ "$cruft" -eq 1 ]; then titel="chore(cruft): bijwerken naar de nieuwste stand van het template"
+  else titel="chore(recept): ${recept##*.}"; fi
+  MIGRATIEBESTAND="$ROOT/migraties/$naam.env"
+  {
+    echo "# Aangemaakt met migratie.sh op $(date +%Y-%m-%d)."
+    [ "$cruft" -eq 1 ] && echo "CRUFT_UPDATE=ja"
+    [ -n "$recept" ] && echo "RECEPT=$recept"
+  } > "$MIGRATIEBESTAND"
+  NIEUWE_TITEL="$titel"
+}
+
+kies_migratie() {  # het pad komt in MIGRATIEBESTAND
+  local bestanden=() opties=() f
+  for f in "$ROOT"/migraties/*.env; do
+    [ -e "$f" ] || continue
+    case "$(basename "$f")" in _*) continue ;; esac
+    bestanden+=("$f")
+    opties+=("$(printf '%-34s %s' "$(basename "$f" .env)" "$(beschrijf "$f")")")
+  done
+  NIEUWE_TITEL=""
+  kies "Welke migratie?" ${opties[@]+"${opties[@]}"} "nieuwe migratie…" "ander migratiebestand (pad)…"
+  if [ "$KEUZE" -le ${#bestanden[@]} ]; then
+    MIGRATIEBESTAND="${bestanden[$((KEUZE - 1))]}"
+  elif [ "$KEUZE" -eq $(( ${#bestanden[@]} + 1 )) ]; then
+    nieuwe_migratie
+  else
+    vraag "Pad naar het migratiebestand" ""
+    [ -f "$ANTWOORD" ] || { echo "niet gevonden: $ANTWOORD" >&2; exit 2; }
+    MIGRATIEBESTAND="$(cd "$(dirname "$ANTWOORD")" && pwd)/$(basename "$ANTWOORD")"
+  fi
+}
+
+# Stelt branch en PR-titel voor; wat afwijkt van wat er nu geldt, gaat het
+# migratiebestand in, zodat elke run van deze migratie dezelfde branch en titel gebruikt.
+branch_en_titel() {
+  local naam huidig
+  naam="$(basename "$MIGRATIEBESTAND" .env)"
+  huidig="$(bash -c 'set -a; . "$1"; echo "${BRANCH:-}"' _ "$MIGRATIEBESTAND")"
+  huidig="${huidig:-migratie/$naam}"
+  vraag "Branch" "$huidig"
+  git check-ref-format --branch "$ANTWOORD" >/dev/null 2>&1 || { echo "ongeldige branchnaam: $ANTWOORD" >&2; exit 2; }
+  [ "$ANTWOORD" = "$huidig" ] || zet_in_bestand "$MIGRATIEBESTAND" BRANCH "$ANTWOORD"
+
+  huidig="$(bash -c 'set -a; . "$1"; echo "${PR_TITEL:-}"' _ "$MIGRATIEBESTAND")"
+  huidig="${huidig:-chore(migratie): $naam}"
+  vraag "PR-titel" "${NIEUWE_TITEL:-$huidig}"
+  [ "$ANTWOORD" = "$huidig" ] || zet_in_bestand "$MIGRATIEBESTAND" PR_TITEL "$ANTWOORD"
+  echo
+}
+
+uitvoeren() {  # <commando...>: tonen, bevestigen en starten
+  echo "Uitvoeren: $*"
+  ja "Doorgaan?" j || exit 0
+  echo
+  "$@"
+}
+
+# --- menu ------------------------------------------------------------------------------
+
+echo "migratie-tools"
+echo
+kies "Wat wil je doen?" \
+  "migratie in een repo draaien             (in-repo.sh)" \
+  "migratie lokaal op clones proberen       (local.sh)" \
+  "migratie over de hele GitLab-groep       (run.sh)" \
+  "template-variabele omzetten in een repo  (cruft-zet.sh)" \
+  "achterstand bekijken                     (achterstand.sh)"
+
+case "$KEUZE" in
+  1)
+    vraag "Repo" "$PWD"; repo="$ANTWOORD"
+    kies_migratie; branch_en_titel
+    branch="$(bash -c '. "$1/lib/migratie.sh"; laad_migratie "$2" >/dev/null; echo "$BRANCH"' _ "$ROOT" "$MIGRATIEBESTAND")"
+    if [ "$(git -C "$repo" branch --show-current 2>/dev/null)" = "$branch" ] && ja "Je staat al op $branch; verder na handwerk (--verder)?" j; then
+      uitvoeren "$ROOT/in-repo.sh" --verder "$MIGRATIEBESTAND" "$repo"
+    else
+      uitvoeren "$ROOT/in-repo.sh" "$MIGRATIEBESTAND" "$repo"
+    fi ;;
+  2)
+    kies_migratie; branch_en_titel
+    vraag "Repo's (paden of git-URL's, gescheiden door spaties)" ""
+    read -r -a repos <<< "$ANTWOORD"
+    [ ${#repos[@]} -gt 0 ] || { echo "geen repo's opgegeven" >&2; exit 2; }
+    uitvoeren "$ROOT/local.sh" "$MIGRATIEBESTAND" "${repos[@]}" ;;
+  3)
+    kies_migratie; branch_en_titel
+    vraag "Alleen repo's die matchen (regex, leeg = de hele groep)" ""
+    extra=()
+    [ -z "$ANTWOORD" ] || extra=(--repo-include "$ANTWOORD")
+    echo "Eerst een dry-run: er wordt niets gepusht."
+    uitvoeren "$ROOT/run.sh" "$MIGRATIEBESTAND" ${extra[@]+"${extra[@]}"}
+    echo
+    if ja "Nu echt uitvoeren en MR's aanmaken (--go)?" n; then
+      uitvoeren "$ROOT/run.sh" "$MIGRATIEBESTAND" --go ${extra[@]+"${extra[@]}"}
+    fi ;;
+  4)
+    vraag "Repo" "$PWD"; repo="$ANTWOORD"
+    if [[ "$(git -C "$repo" branch --show-current 2>/dev/null)" == migratie/cruft-zet-* ]] \
+       && ja "Je staat op een cruft-zet-branch; verder na handwerk (--verder)?" j; then
+      uitvoeren "$ROOT/cruft-zet.sh" --verder "$repo"
+    else
+      [ -f "$repo/.cruft.json" ] || { echo "$repo is geen template-service (geen .cruft.json)" >&2; exit 2; }
+      echo "Huidige waarden:"
+      jq -r '.context.cookiecutter | to_entries[] | select(.key | startswith("_") | not)
+             | select(.value | type == "boolean" or type == "number") | "  \(.key) = \(.value)"' "$repo/.cruft.json"
+      vraag "Variabele=waarde (bv. liquibase=true)" ""
+      [[ "$ANTWOORD" == *=* ]] || { echo "gebruik variabele=waarde" >&2; exit 2; }
+      uitvoeren "$ROOT/cruft-zet.sh" "$ANTWOORD" "$repo"
+    fi ;;
+  5)
+    vraag "Lokale repo's (leeg = alle template-services in de GitLab-groep)" ""
+    read -r -a repos <<< "$ANTWOORD"
+    uitvoeren "$ROOT/achterstand.sh" ${repos[@]+"${repos[@]}"} ;;
+esac

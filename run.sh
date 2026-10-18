@@ -58,9 +58,9 @@ fi
 args=(run "$ROOT/repo-runner.sh"
   --platform gitlab
   --group "$GITLAB_GROUP"
-  --branch "migratie/$MIGRATIE"
+  --branch "$BRANCH"
   --manual-commit
-  --pr-title "chore(migratie): $MIGRATIE"
+  --pr-title "$PR_TITEL"
   --pr-body "$(pr_beschrijving "$ROOT")"
   --labels "migratie,$MIGRATIE"
   --conflict-strategy skip
@@ -90,9 +90,10 @@ if [ -n "${UITSLUITLIJST:-}" ]; then uitsluiten+=("$(repo_regex $UITSLUITLIJST)"
 echo ">> open MR's van andere migraties opvragen"
 mrs="$(open_migratie_mrs)" || { echo "kon de open MR's niet opvragen bij GitLab" >&2; exit 2; }
 wachtend=()
-while IFS=$'\t' read -r project andere; do
-  [ -n "$project" ] && [ "$andere" != "$MIGRATIE" ] || continue
-  printf '%s\tWacht op vorige migratie\topen MR van migratie %s\n' "$project" "$andere" >> "$RESULTATEN"
+while IFS=$'\t' read -r project labels; do
+  # Een MR met het label van deze migratie is van onszelf (bv. een eerdere ronde).
+  [ -n "$project" ] && [[ ",$labels," != *",$MIGRATIE,"* ]] || continue
+  printf '%s\tWacht op vorige migratie\topen MR van migratie %s\n' "$project" "${labels:-?}" >> "$RESULTATEN"
   wachtend+=("$project")
 done <<< "$mrs"
 if [ ${#wachtend[@]} -gt 0 ]; then
