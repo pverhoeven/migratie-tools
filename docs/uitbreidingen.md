@@ -12,7 +12,7 @@ in Jenkins, niet in deze repo.
 |---|---|---|---|
 | 1 | [Impactanalyse bij een template-MR](#1-impactanalyse-bij-een-template-mr) | hoog | Idee |
 | 2 | [Opvolgen na de uitrol](#2-opvolgen-na-de-uitrol) | hoog | Klaar |
-| 3 | [Snel reageren op een kwetsbaarheid](#3-snel-reageren-op-een-kwetsbaarheid) | hoog | Idee |
+| 3 | [Snel reageren op een kwetsbaarheid](#3-snel-reageren-op-een-kwetsbaarheid) | hoog | Klaar |
 | 4 | [Werk naar het juiste team](#4-werk-naar-het-juiste-team) | middel | Idee |
 | 5 | [Automatisch mergen bij veilige migraties](#5-automatisch-mergen-bij-veilige-migraties) | middel | Idee |
 | 6 | [Een nieuwe service starten](#6-een-nieuwe-service-starten) | middel | Idee |
@@ -118,18 +118,15 @@ wachtend) komen uit de laatste run in `runs/`. Zo zie je wanneer een migratie ec
 
 ## 3. Snel reageren op een kwetsbaarheid
 
-Twee delen:
-
-- een rapport, zonder iets te wijzigen, van welke services dependency X onder versie Y
-  gebruiken;
-- een migratie die de versie ophoogt, met een OpenRewrite-recept met parameters, zoals
-  `UpgradeDependencyVersion`.
-
-Bij een CVE heb je dan snel MR's bij precies de services die het nodig hebben.
-
-- Er is al: `ALLEEN_MET_DEPENDENCY` filtert op een dependency.
-- Nodig: filteren op versie, en recepten met parameters in het migratiebestand (nu
-  draait een migratie één recept zonder parameters).
+Eén regel in een migratie, `DEPENDENCY_VERSIE='groupId:artifactId:versie'`, hoogt de
+versie op bij precies de services die eronder zitten, direct of indirect (zie "Een
+kwetsbaarheid" in de README). Het rapport en de reparatie zijn dezelfde migratie: de
+dry-run laat zien wie geraakt is (Gewijzigd) en wie niet (Ongewijzigd), met `--go` komen
+de MR's, en `status.sh` volgt ze op. Een eigen recept met een test is niet nodig; het
+gebruikt de standaardrecepten `UpgradeDependencyVersion` en
+`UpgradeTransitiveDependencyVersion` van OpenRewrite. Wie de oplossing als vast recept
+met een test wil vastleggen, heeft het voorbeeld `VoorbeeldKwetsbaarheidTomcat` in
+`recepten/`.
 
 ## 4. Werk naar het juiste team
 

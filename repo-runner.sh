@@ -80,7 +80,8 @@ fi
 
 start="${BASIS:-$(git rev-parse HEAD)}"
 
-# Transformaties, in vaste volgorde: cruft update, variabelen omzetten, recept.
+# Transformaties, in vaste volgorde: cruft update, variabelen omzetten, recept,
+# dependency-versies.
 if [ -n "${CRUFT_UPDATE:-}" ]; then
   echo ">> transformatie: cruft update"
   "$ROOT/transformaties/cruft-update.sh" || {
@@ -96,6 +97,10 @@ done
 if [ -n "${RECEPT:-}" ]; then
   echo ">> transformatie: recept $RECEPT"
   "$ROOT/transformaties/recept.sh" || handwerk "recept $RECEPT mislukt"
+fi
+if [ -n "${DEPENDENCY_VERSIE:-}" ]; then
+  echo ">> transformatie: dependency-versies $DEPENDENCY_VERSIE"
+  "$ROOT/transformaties/dependency-versie.sh" || handwerk "dependency-versies ophogen mislukt"
 fi
 
 # Controle

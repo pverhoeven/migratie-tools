@@ -1,0 +1,22 @@
+# Voorbeeld: een kwetsbaarheid als vast recept, in plaats van DEPENDENCY_VERSIE in het
+# migratiebestand (zie "Een kwetsbaarheid" in de README). Doet hetzelfde: de versie
+# ophogen waar die lager is, direct en indirect. Handig als je de oplossing wilt
+# vastleggen met een test, of wilt combineren met andere stappen (bv. een API die
+# verandert). Voor spoed is DEPENDENCY_VERSIE sneller. Neem in de naam het CVE-nummer op,
+# bv. local.migratietools.Cve202612345Tomcat.
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: local.migratietools.VoorbeeldKwetsbaarheidTomcat
+displayName: Voorbeeld van een kwetsbaarheid, tomcat-embed-core naar 10.1.61
+description: Hoogt tomcat-embed-core op naar 10.1.61 waar de versie lager is, ook als hij er indirect in komt.
+recipeList:
+  - org.openrewrite.maven.UpgradeDependencyVersion:
+      groupId: org.apache.tomcat.embed
+      artifactId: tomcat-embed-core
+      newVersion: 10.1.61
+      overrideManagedVersion: true
+  - org.openrewrite.maven.UpgradeTransitiveDependencyVersion:
+      groupId: org.apache.tomcat.embed
+      artifactId: tomcat-embed-core
+      version: 10.1.61
+      because: voorbeeld van een kwetsbaarheid

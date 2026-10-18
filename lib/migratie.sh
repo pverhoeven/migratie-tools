@@ -9,6 +9,7 @@
 #   CRUFT_UPDATE=ja        de template-service bijwerken naar de nieuwste stand
 #   CRUFT_ZET              template-variabele(n) omzetten, bv. 'gedeelde_jar=true'
 #   RECEPT                 naam van één OpenRewrite-recept uit recepten/
+#   DEPENDENCY_VERSIE      dependency-versies ophogen, bv. 'org.apache.tomcat.embed:tomcat-embed-core:10.1.61'
 #   BRANCH                 optioneel; standaard migratie/<naam>
 #   PR_TITEL               optioneel; standaard chore(migratie): <naam>
 # De PR-beschrijving bevat de inhoud van dit bestand (docs/adr/0002). Branch en titel
@@ -52,7 +53,7 @@ laad_migratie() {  # <naam of pad>
   fi
 
   # Waarden horen uit het migratiebestand te komen, niet uit config.env of de shell.
-  unset CRUFT_UPDATE CRUFT_ZET ALLEEN_MET_DEPENDENCY TEMPLATE_UPDATE TEMPLATE_VERSION RECEPT BRANCH PR_TITEL
+  unset CRUFT_UPDATE CRUFT_ZET ALLEEN_MET_DEPENDENCY TEMPLATE_UPDATE TEMPLATE_VERSION RECEPT DEPENDENCY_VERSIE BRANCH PR_TITEL
   set -a; . "$bestand"; set +a
   export MIGRATIE
 
@@ -63,12 +64,17 @@ laad_migratie() {  # <naam of pad>
     ""|ja) ;;
     *) echo "$bestand: CRUFT_UPDATE moet 'ja' zijn of ontbreken" >&2; exit 2 ;;
   esac
-  if [ -z "${CRUFT_UPDATE:-}${CRUFT_ZET:-}${RECEPT:-}" ]; then
-    echo "$bestand: zet minstens één van CRUFT_UPDATE=ja, CRUFT_ZET of RECEPT" >&2; exit 2
+  if [ -z "${CRUFT_UPDATE:-}${CRUFT_ZET:-}${RECEPT:-}${DEPENDENCY_VERSIE:-}" ]; then
+    echo "$bestand: zet minstens één van CRUFT_UPDATE=ja, CRUFT_ZET, RECEPT of DEPENDENCY_VERSIE" >&2; exit 2
   fi
   local z
   for z in ${CRUFT_ZET:-}; do
     [[ "$z" == ?*=* ]] || { echo "$bestand: CRUFT_ZET bevat '$z'; gebruik <variabele>=<waarde>" >&2; exit 2; }
+  done
+  local d
+  for d in ${DEPENDENCY_VERSIE:-}; do
+    [[ "$d" =~ ^[A-Za-z0-9._-]+:[A-Za-z0-9._-]+:[A-Za-z0-9._+-]+$ ]] \
+      || { echo "$bestand: DEPENDENCY_VERSIE bevat '$d'; gebruik groupId:artifactId:versie" >&2; exit 2; }
   done
   if [ -n "${ALLEEN_MET_DEPENDENCY:-}" ] && ! [[ "$ALLEEN_MET_DEPENDENCY" =~ ^[A-Za-z0-9._-]+$ ]]; then
     echo "$bestand: ALLEEN_MET_DEPENDENCY is een artifactId, bv. gedeelde-jar" >&2; exit 2
@@ -159,6 +165,7 @@ pr_beschrijving() {  # <root>
   [ -z "${CRUFT_UPDATE:-}" ] || printf -- '- cruft update naar de nieuwste stand van het template (één commit per template-commit)\n'
   [ -z "${CRUFT_ZET:-}" ] || printf -- '- template-variabele(n) omzetten: `%s`\n' "$CRUFT_ZET"
   [ -z "${RECEPT:-}" ] || printf -- '- recept `%s`\n' "$RECEPT"
+  [ -z "${DEPENDENCY_VERSIE:-}" ] || printf -- '- dependency-versies ophogen (direct en indirect): `%s`\n' "$DEPENDENCY_VERSIE"
   printf '\nMigratiebestand `%s.env`:\n\n```\n%s\n```\n\n' "$MIGRATIE" "$inhoud"
   printf 'Elke transformatie is een eigen commit. Controleer de diff en merge.\n'
 }

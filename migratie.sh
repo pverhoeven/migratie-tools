@@ -59,11 +59,12 @@ zet_in_bestand() {  # <bestand> <key> <waarde>
 
 beschrijf() {  # <migratiebestand>: korte omschrijving van wat de migratie doet
   local d=() w
-  w="$(bash -c 'set -a; . "$1"; printf "%s|%s|%s|%s" "${CRUFT_UPDATE:-}" "${CRUFT_ZET:-}" "${RECEPT:-}" "${ALLEEN_MET_DEPENDENCY:-}"' _ "$1")"
-  IFS='|' read -r cruft zet recept alleen <<< "$w"
+  w="$(bash -c 'set -a; . "$1"; printf "%s|%s|%s|%s|%s" "${CRUFT_UPDATE:-}" "${CRUFT_ZET:-}" "${RECEPT:-}" "${ALLEEN_MET_DEPENDENCY:-}" "${DEPENDENCY_VERSIE:-}"' _ "$1")"
+  IFS='|' read -r cruft zet recept alleen deps <<< "$w"
   [ -n "$cruft" ] && d+=("cruft update")
   [ -n "$zet" ] && d+=("$zet")
   [ -n "$recept" ] && d+=("recept ${recept##*.}")
+  [ -n "$deps" ] && d+=("versie $(for x in $deps; do printf '%s ' "$(cut -d: -f2- <<< "$x")"; done | sed 's/ $//')")
   local IFS=,
   echo "$(echo "${d[*]:-?}" | sed 's/,/ + /g')${alleen:+ (alleen met $alleen)}"
 }

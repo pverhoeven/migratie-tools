@@ -39,6 +39,7 @@ Of start gewoon `migratie.sh`; dat vraagt het allemaal en toont het commando dat
 | `transformaties/cruft-update.sh` | De cruft update: bijwerken naar de nieuwste stand van het template, commit voor commit, met echte git-conflicten (ADR 0004) |
 | `transformaties/cruft-zet.sh` | Een template-variabele omzetten in één service; gebruikt door `CRUFT_ZET` en door `cruft-zet.sh` (ADR 0005) |
 | `transformaties/recept.sh` | Eén OpenRewrite-recept uit `recepten/` draaien via de Maven-plugin |
+| `transformaties/dependency-versie.sh` | Dependency-versies ophogen met standaardrecepten van OpenRewrite (`DEPENDENCY_VERSIE`) |
 | `controles/verify.sh` | Build en tests (`mvn verify`); draait daarna alles terug wat de build wijzigde |
 | `lib/template.sh` | Het template genereren en 3-way mergen; gedeeld door de cruft update en `cruft-zet.sh` |
 | `lib/render-template.py` | Genereert één stand van het template zoals cruft dat doet (gebruikt cruft 2.16.0) |
@@ -114,9 +115,10 @@ Elke regel betekent één ding:
 | `CRUFT_UPDATE=ja` | het template bijwerken naar de nieuwste stand (cruft update) |
 | `CRUFT_ZET='gedeelde_jar=true'` | een of meer template-variabelen omzetten (zoals `cruft-zet.sh`), gescheiden door spaties |
 | `RECEPT=local.migratietools.…` | één OpenRewrite-recept uit `recepten/` |
+| `DEPENDENCY_VERSIE='groep:artifact:versie'` | dependency-versies ophogen, direct en indirect, bv. bij een kwetsbaarheid (zie "Een kwetsbaarheid"); een of meer, gescheiden door spaties |
 | `BRANCH=…`, `PR_TITEL='…'` | optioneel; standaard `migratie/<naam>` en `chore(migratie): <naam>` |
 
-Minstens één van `CRUFT_UPDATE`, `CRUFT_ZET` en `RECEPT`; ze draaien in deze volgorde, met
+Minstens één van `CRUFT_UPDATE`, `CRUFT_ZET`, `RECEPT` en `DEPENDENCY_VERSIE`; ze draaien in deze volgorde, met
 daarna de controle `verify`. Een feature die zowel het template als de code van de
 services raakt, is zo één migratie, bv. (zie `voorbeeld/gedeelde-jar.env`):
 
@@ -158,6 +160,7 @@ Beschikbare recepten:
 | `local.migratietools.WekelijkseOpschoning` | kleine, idempotente opschoning om wekelijks te draaien: ongebruikte imports, velden, methodes en variabelen, omslachtige booleans, diamond-operator, `@Override`, geparametriseerde SLF4J-logregels, `printStackTrace` naar de logger, JUnit 5-opschoning, overbodige `@Autowired` op constructors |
 | `local.migratietools.OpruimenDebugOutput` | voorbeeld: `System.out.println` weg |
 | `local.migratietools.GedeeldeJarProvided` | voorbeeld van een feature: de dependency `nl.voorbeeld:gedeelde-jar` op `provided` (samen met `CRUFT_ZET='gedeelde_jar=true'`) |
+| `local.migratietools.VoorbeeldKwetsbaarheidTomcat` | voorbeeld van een kwetsbaarheid als vast recept: `tomcat-embed-core` naar 10.1.61, direct en indirect (zie "Een kwetsbaarheid") |
 
 Recepten en migraties van je eigen organisatie (eigen groupId's, interne namen) horen
 niet in deze publieke repo; zie "Eigen migraties en recepten".
@@ -168,6 +171,48 @@ Een service waarin niets op te ruimen valt, krijgt geen MR. Grotere of opiniëre
 recepten (Spring Boot-upgrades, AssertJ, `CommonStaticAnalysis`, `AutoFormat`) draai je
 als losse migratie; een Spring Boot-upgrade bij template-services samen met
 `CRUFT_UPDATE=ja` (het template hoogt de parent op, het recept past de code aan).
+
+## Een kwetsbaarheid
+
+Bij een kwetsbaarheid in een dependency hoog je de versie op met één regel in een
+migratie, zonder eigen recept:
+
+```bash
+# migraties/cve-2026-12345.env
+DEPENDENCY_VERSIE='org.apache.tomcat.embed:tomcat-embed-core:10.1.61'
+PR_TITEL='fix(deps): tomcat-embed-core naar 10.1.61 (CVE-2026-12345)'
+```
+
+Per dependency draaien twee standaardrecepten van OpenRewrite: `UpgradeDependencyVersion`
+als de service de dependency zelf noemt (ook met een versie uit een property,
+`dependencyManagement` of een parent of BOM, die dan een eigen `<version>` krijgt) en
+`UpgradeTransitiveDependencyVersion` als hij er indirect in komt (de versie komt dan in
+`dependencyManagement`, met de naam van de migratie erbij). Beide doen alleen iets waar de
+versie lager is. Daarna draait verify; elke service krijgt één commit
+`fix(deps): tomcat-embed-core naar 10.1.61`.
+
+1. **Wie is geraakt?** Een dry-run (`run.sh` zonder `--go`, of in Jenkins met GO uit) is
+   het rapport: Gewijzigd = geraakt (de patch in `runs/…/debug/` toont de oude versie),
+   Ongewijzigd = niet geraakt of al veilig, Handwerk nodig = geraakt, maar de build is rood
+   na het ophogen (bv. een major-versie).
+2. **Repareren:** dezelfde migratie met `--go`.
+3. **Opvolgen:** `status.sh <migratie>` tot alles gemerged is.
+
+Komt de versie uit het template (bv. de Spring Boot-parent), dan is een template-wijziging
+met een cruft update de nette oplossing; een versie die in de service vastligt, kan bij
+een latere cruft update botsen. Voor een spoedgeval is de migratie prima, de fix hoort
+daarna in het template.
+
+### Als vast recept
+
+Wil je de oplossing vastleggen met een test, of combineren met andere stappen (bv. een
+API die verandert met de nieuwe versie), maak dan een recept in `recepten/` met dezelfde
+twee standaardrecepten en gebruik dat met `RECEPT=`. Het voorbeeld staat in
+`recepten/src/main/resources/META-INF/rewrite/kwetsbaarheden.yml`
+(`local.migratietools.VoorbeeldKwetsbaarheidTomcat`) met de test
+`VoorbeeldKwetsbaarheidTomcatTest`; kopieer het en zet het CVE-nummer in de naam. Voor
+spoed is `DEPENDENCY_VERSIE` sneller: geen recept en geen test. Een kwetsbaarheid in een
+interne library hoort in je eigen receptenmodule (`RECEPTEN_MAP`), niet in deze repo.
 
 ## Eigen migraties en recepten
 
