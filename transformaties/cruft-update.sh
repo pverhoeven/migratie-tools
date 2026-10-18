@@ -14,6 +14,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 . "$ROOT/lib/common.sh"
+. "$ROOT/lib/template.sh"
 
 vereist git jq
 
@@ -46,19 +47,6 @@ if ! tpl merge-base --is-ancestor "$huidig" "$doel"; then
 fi
 echo "${#stappen[@]} template-commit(s) achter, naar $(tpl rev-parse --short "$doel")"
 
-# Zet een conflict in de index zoals git dat bij een merge doet: stage 1 = basis,
-# 2 = service (ours), 3 = template (theirs). Een lege versie laat die stage weg.
-markeer_conflict() {  # <pad> <basis> <service> <template>
-  local pad="$1" mode=100644 info i=1 v
-  [ -x "$pad" ] && mode=100755
-  info="0 0000000000000000000000000000000000000000"$'\t'"$pad"$'\n'
-  for v in "$2" "$3" "$4"; do
-    [ -n "$v" ] && info+="$mode $(git hash-object -w "$v") $i"$'\t'"$pad"$'\n'
-    i=$((i + 1))
-  done
-  printf '%s' "$info" | git update-index --index-info
-}
-
 # Commit-boodschap voor een template-commit: neemt het type over als de template-commit
 # een conventional commit is (feat: ..., fix(x)!: ...), anders chore.
 bericht_voor() {  # <commit>
@@ -77,11 +65,9 @@ MSG_BESTAND="$(git rev-parse --git-dir)/MIGRATIE_MSG"
 rm -f "$MSG_BESTAND"
 
 render() {  # <commit> <uitvoermap> <context.json>
-  rm -rf "$2"
-  cruft_python "$ROOT/lib/render-template.py" .cruft.json "$tmp/template" "$1" "$2" "$3" >/dev/null
+  render_template .cruft.json "$tmp/template" "$1" "$2" "$3"
 }
 
-: > "$tmp/leeg"
 vorige="$huidig"
 for stap in "${stappen[@]}"; do
   van="$(tpl rev-parse --short "$vorige")"; naar="$(tpl rev-parse --short "$stap")"
@@ -90,45 +76,16 @@ for stap in "${stappen[@]}"; do
   render "$vorige" "$tmp/oud" "$tmp/oud.json"
   render "$stap" "$tmp/nieuw" "$tmp/nieuw.json"
 
-  conflicten=()
-  while IFS= read -r -d '' f; do
-    f="${f#./}"; o="$tmp/oud/$f"; n="$tmp/nieuw/$f"
-    if [ -f "$o" ] && [ -f "$n" ]; then
-      cmp -s "$o" "$n" && continue                  # niet gewijzigd in het template
-      [ -e "$f" ] || continue                       # door de service verwijderd: zo laten
-      if cmp -s "$f" "$o"; then cp "$n" "$f"; continue; fi
-      cmp -s "$f" "$n" && continue
-      cp "$f" "$tmp/service"
-      if ! git merge-file --diff3 -L service -L "template $van" -L "template $naar" "$f" "$o" "$n"; then
-        conflicten+=("$f"); markeer_conflict "$f" "$o" "$tmp/service" "$n"
-      fi
-    elif [ -f "$n" ]; then                          # nieuw in het template
-      if [ ! -e "$f" ]; then
-        mkdir -p "$(dirname "$f")"; cp "$n" "$f"
-      elif ! cmp -s "$f" "$n"; then
-        cp "$f" "$tmp/service"
-        if ! git merge-file --diff3 -L service -L "(nieuw)" -L "template $naar" "$f" "$tmp/leeg" "$n"; then
-          conflicten+=("$f"); markeer_conflict "$f" "" "$tmp/service" "$n"
-        fi
-      fi
-    elif [ -e "$f" ]; then                          # verwijderd uit het template
-      if cmp -s "$f" "$o"; then
-        rm "$f"
-      else
-        conflicten+=("$f (verwijderd uit het template, aangepast in de service)")
-        markeer_conflict "$f" "$o" "$f" ""
-      fi
-    fi
-  done < <({ (cd "$tmp/oud" && find . -type f -print0); (cd "$tmp/nieuw" && find . -type f -print0); } | sort -zu)
+  merge_renders "$tmp/oud" "$tmp/nieuw" "template $van" "template $naar"
 
   # Zoals cruft update: nieuwe commit en context; checkout blijft leeg (standaardbranch).
   jq --arg commit "$stap" --slurpfile ctx "$tmp/nieuw.json" \
     '.commit = $commit | .checkout = null | .context = $ctx[0]' .cruft.json > "$tmp/cruft.json"
   cp "$tmp/cruft.json" .cruft.json
 
-  if [ ${#conflicten[@]} -gt 0 ]; then
+  if [ ${#MERGE_CONFLICTEN[@]} -gt 0 ]; then
     bericht_voor "$stap" > "$MSG_BESTAND"
-    reden "conflict bij template $naar ($onderwerp): $(printf '%s, ' "${conflicten[@]}" | sed 's/, $//')"
+    reden "conflict bij template $naar ($onderwerp): $(printf '%s, ' "${MERGE_CONFLICTEN[@]}" | sed 's/, $//')"
     exit 1
   fi
   commit_alles "$(bericht_voor "$stap")"

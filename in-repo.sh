@@ -43,26 +43,7 @@ echo "=== $MIGRATIE in $repo ==="
 if [ "$verder" -eq 1 ]; then
   hervat "$repo" || exit 20
 else
-  huidige="$(git branch --show-current || true)"
-  case "$huidige" in
-    migratie/*)
-      echo "je staat op $huidige: een migratie start vanaf main, niet bovenop een andere migratie" >&2
-      echo "ga eerst naar je hoofdbranch (bv. git switch main && git pull)" >&2
-      exit 2 ;;
-  esac
-  if git rev-parse -q --verify "refs/heads/$branch" >/dev/null; then
-    echo "de branch $branch bestaat al; gebruik --verder, of verwijder de branch om opnieuw te beginnen" >&2
-    exit 2
-  fi
-  # De controle draait alle wijzigingen van de build terug; met een schone werkmap
-  # raak je daarbij niets van jezelf kwijt.
-  if [ -n "$(git status --porcelain)" ]; then
-    echo "de werkmap is niet schoon; commit of stash eerst je wijzigingen" >&2
-    exit 2
-  fi
-  echo "branch $branch vanaf ${huidige:-HEAD} ($(git rev-parse --short HEAD))"
-  git config "branch.$branch.migratiebasis" "$(git rev-parse HEAD)"
-  git switch -q -c "$branch"
+  start_branch "$branch"
 fi
 
 if [ -n "${RECEPT:-}" ]; then

@@ -16,6 +16,11 @@ _Avoid_: project, applicatie, repo (als het om de scope gaat)
 Een service die uit het template is gegenereerd en de template-standen volgt.
 _Avoid_: cruft-service, gegenereerde service
 
+**Template-variabele**:
+Een keuze per template-service, vastgelegd in `.cruft.json` (bv. `db`, `liquibase`),
+waarmee het template de service anders opbouwt.
+_Avoid_: flag (in de code), cookiecutter-variabele
+
 **Uitsluitlijst**:
 De repo's in de groep die nooit als service gelden, voor geen enkele migratie
 (bv. libraries).

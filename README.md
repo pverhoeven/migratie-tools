@@ -10,6 +10,7 @@ Begrippen staan in [GLOSSARY.md](GLOSSARY.md), besluiten in [docs/adr](docs/adr)
 run.sh                 één migratie over een GitLab-groep (standaard dry-run)
 local.sh               lokaal: kloont services naar ./work en draait de migratie
 in-repo.sh             lokaal: draait de migratie in een bestaande clone
+cruft-zet.sh           lokaal: zet een template-variabele om in één service (bv. liquibase=true)
 achterstand.sh         per template-service: template-commit en achterstand
 repo-runner.sh         draait één migratie binnen één service
 migraties/<naam>.env   de migraties; <naam> wordt de branch migratie/<naam>
@@ -135,6 +136,25 @@ pad niet te typen:
 alias migratie=~/Developer/code/migratie-tools/in-repo.sh
 migratie cruft-update            # en daarna: migratie --verder cruft-update
 ```
+
+## Een template-variabele omzetten
+
+Template-variabelen (bv. `db`, `liquibase`) staan per service in `.cruft.json`. Een
+variabele achteraf omzetten doe je in je eigen clone met `cruft-zet.sh`:
+
+```bash
+cd ~/code/klant-service                        # schone werkmap, bijgewerkte main
+~/migratie-tools/cruft-zet.sh liquibase=true   # branch migratie/cruft-zet-liquibase
+# conflict? los op in IntelliJ, daarna:
+~/migratie-tools/cruft-zet.sh --verder
+git push -u origin migratie/cruft-zet-liquibase # MR met labels migratie, cruft-zet
+```
+
+Het template blijft op dezelfde commit; de service krijgt alleen het effect van de
+variabele (aan: de onderdelen erbij, uit: de onderdelen weg), met dezelfde 3-way-merge
+als de cruft update. Heeft de service die onderdelen zelf aangepast, dan krijg je een
+conflict. Private, afgeleide en "bron"-variabelen (zoals `project_name`) worden geweigerd;
+een boolean accepteert alleen `true` of `false`. Zie docs/adr/0005.
 
 ## Handwerk nodig
 

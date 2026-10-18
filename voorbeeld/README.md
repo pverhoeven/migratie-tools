@@ -84,9 +84,16 @@ Draai je de opschoning daarna nog een keer, dan is de uitkomst "Ongewijzigd".
 Een eigen template-wijziging proberen: pas `work/voorbeeld/template` aan, commit op
 `main` en draai de migratie opnieuw.
 
-Let op: een variabele achteraf aanzetten (bv. `liquibase` op `true` zetten in de
-`.cruft.json` van bestel-service) voegt bij de volgende cruft update de init container
-níet toe. De update past alleen wijzigingen van het template toe; voor de service ziet
-het eruit alsof hij die onderdelen bewust heeft weggelaten. Zo werkt `cruft update`
-zelf ook. Helm-templates in `chart/templates/` worden niet
+Een variabele achteraf omzetten doe je met `cruft-zet.sh`, niet door `.cruft.json` met
+de hand aan te passen (dan voegt de cruft update niets toe). Bijvoorbeeld liquibase
+aanzetten bij bestel-service:
+
+```bash
+git clone work/voorbeeld/services/bestel-service /tmp/bestel-service && cd /tmp/bestel-service
+/pad/naar/migratie-tools/cruft-zet.sh liquibase=true
+git show    # liquibase-sectie in values.yaml en de init container in deployment.yaml
+```
+
+Uitzetten geeft een conflict als de service de init container zelf heeft aangepast; dat
+los je op zoals bij de cruft update, gevolgd door `cruft-zet.sh --verder`. Helm-templates in `chart/templates/` worden niet
 door cookiecutter gerenderd (`_copy_without_render`), omdat ze zelf `{{ }}` gebruiken.

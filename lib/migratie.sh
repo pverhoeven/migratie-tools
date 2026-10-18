@@ -79,3 +79,29 @@ hervat() {  # <dir>
   rm -f "$msg"
   echo "gecommit: ${bericht%%$'\n'*}"
 }
+
+# Maakt in de huidige repo de branch <branch> vanaf de huidige commit en onthoudt dat
+# beginpunt (voor --verder). Weigert bovenop een andere migratie, als de branch al
+# bestaat en bij een vuile werkmap (de controle draait alles terug wat de build wijzigt).
+# Gebruikt door in-repo.sh en cruft-zet.sh.
+start_branch() {  # <branch>
+  local branch="$1" huidige
+  huidige="$(git branch --show-current || true)"
+  case "$huidige" in
+    migratie/*)
+      echo "je staat op $huidige: start vanaf main, niet bovenop een andere migratie" >&2
+      echo "ga eerst naar je hoofdbranch (bv. git switch main && git pull)" >&2
+      exit 2 ;;
+  esac
+  if git rev-parse -q --verify "refs/heads/$branch" >/dev/null; then
+    echo "de branch $branch bestaat al; gebruik --verder, of verwijder de branch om opnieuw te beginnen" >&2
+    exit 2
+  fi
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "de werkmap is niet schoon; commit of stash eerst je wijzigingen" >&2
+    exit 2
+  fi
+  echo "branch $branch vanaf ${huidige:-HEAD} ($(git rev-parse --short HEAD))"
+  git config "branch.$branch.migratiebasis" "$(git rev-parse HEAD)"
+  git switch -q -c "$branch"
+}
