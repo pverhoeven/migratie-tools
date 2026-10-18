@@ -58,6 +58,7 @@ Of start gewoon `migratie.sh`; dat vraagt het allemaal en toont het commando dat
 | `runs/` | Per run de resultaten en de debug-uitvoer (niet in git) |
 | `work/` | De clones van `uitproberen.sh` en het voorbeeld (niet in git) |
 | `docs/adr/` | De besluiten; begrippen staan in `GLOSSARY.md` |
+| `docs/uitbreidingen.md` | Ideeën voor uitbreidingen, met hun status |
 | `voorbeeld/` | Een voorbeeld-template (Spring Boot met Helm-chart) en twee services om mee te oefenen |
 
 Een migratie bestaat uit een cruft update en/of één OpenRewrite-recept, gevolgd
