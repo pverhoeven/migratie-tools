@@ -74,6 +74,11 @@ args=(run "$ROOT/repo-runner.sh"
 if [ -n "${GITLAB_BASE_URL:-}" ]; then
   args+=(--base-url "$GITLAB_BASE_URL")
 fi
+# Mergen zodra de pipeline slaagt, aangezet bij het aanmaken van de MR; standaard aan,
+# AUTOMATISCH_MERGEN=nee in het migratiebestand zet het uit (eerst reviewen).
+if [ "${AUTOMATISCH_MERGEN:-ja}" = "ja" ]; then
+  args+=(--pr-auto-merge)
+fi
 if [ "$go" -eq 0 ]; then
   echo "DRY RUN: er wordt niets gepusht. Gebruik --go om PR's aan te maken."
   args+=(--dry-run)

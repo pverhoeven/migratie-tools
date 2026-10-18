@@ -14,7 +14,7 @@ in Jenkins, niet in deze repo.
 | 2 | [Opvolgen na de uitrol](#2-opvolgen-na-de-uitrol) | hoog | Klaar |
 | 3 | [Snel reageren op een kwetsbaarheid](#3-snel-reageren-op-een-kwetsbaarheid) | hoog | Klaar |
 | 4 | [Werk naar het juiste team](#4-werk-naar-het-juiste-team) | middel | Idee |
-| 5 | [Automatisch mergen bij veilige migraties](#5-automatisch-mergen-bij-veilige-migraties) | middel | Idee |
+| 5 | [Automatisch mergen](#5-automatisch-mergen) | middel | Klaar |
 | 6 | [Een nieuwe service starten](#6-een-nieuwe-service-starten) | middel | Idee |
 | 7 | [Bestaande services onder het template](#7-bestaande-services-onder-het-template) | middel | Idee |
 | 8 | [Inventaris van het template-gebruik](#8-inventaris-van-het-template-gebruik) | laag | Idee |
@@ -134,10 +134,14 @@ Wijs MR's en "Handwerk nodig" toe aan de eigenaar, via CODEOWNERS of een toewijz
 GitLab-subgroep. Stuur na een Jenkins-run de werklijst naar het teamkanaal of per mail, in
 plaats van alleen naar `runs/`.
 
-## 5. Automatisch mergen bij veilige migraties
+## 5. Automatisch mergen
 
-Laat GitLab de MR mergen zodra de pipeline groen is, met een vlag in het migratiebestand.
-Bij de wekelijkse opschoning of patch-updates scheelt dat veel reviewwerk.
+Standaard maakt `run.sh --go` de MR's aan met GitLabs "merge when pipeline succeeds"
+(multi-gitter `--pr-auto-merge`), dus mergen zodra de pipeline groen is, met de
+goedkeuringsregels van het project; `AUTOMATISCH_MERGEN=nee` in het migratiebestand zet
+het uit. Met "Pipelines must
+succeed" in de projecten blijft de default branch (bv. `develop`) groen. Zie "Automatisch
+mergen" in de README.
 
 ## 6. Een nieuwe service starten
 

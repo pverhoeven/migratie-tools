@@ -116,6 +116,7 @@ Elke regel betekent één ding:
 | `CRUFT_ZET='gedeelde_jar=true'` | een of meer template-variabelen omzetten (zoals `cruft-zet.sh`), gescheiden door spaties |
 | `RECEPT=local.migratietools.…` | één OpenRewrite-recept uit `recepten/` |
 | `DEPENDENCY_VERSIE='groep:artifact:versie'` | dependency-versies ophogen, direct en indirect, bv. bij een kwetsbaarheid (zie "Een kwetsbaarheid"); een of meer, gescheiden door spaties |
+| `AUTOMATISCH_MERGEN=nee` | optioneel: standaard worden de MR's gemerged zodra hun pipeline slaagt; met `nee` niet, om eerst te reviewen (zie "Automatisch mergen") |
 | `BRANCH=…`, `PR_TITEL='…'` | optioneel; standaard `migratie/<naam>` en `chore(migratie): <naam>` |
 
 Minstens één van `CRUFT_UPDATE`, `CRUFT_ZET`, `RECEPT` en `DEPENDENCY_VERSIE`; ze draaien in deze volgorde, met
@@ -423,6 +424,27 @@ per service de nieuwste) en toont ze per groep, de werklijst bovenaan:
 Bovenaan staat hoeveel MR's al gemerged zijn. Nodig: `GITLAB_TOKEN` en `GITLAB_GROUP`
 (zoals bij `run.sh`). Services zonder MR kent het alleen als de run in deze map staat; in
 Jenkins staat `runs/` in de artefacten van de build.
+
+## Automatisch mergen
+
+`run.sh --go` maakt de MR's standaard aan met GitLabs "merge when pipeline succeeds"
+(multi-gitter `--pr-auto-merge`). Een groene MR gaat dus vanzelf door naar de default
+branch van de service (bv. `develop`); een rode blijft open en staat in de werklijst van
+`status.sh`. Goedkeuringsregels in GitLab gelden gewoon: auto-merge wacht daarop en slaat
+ze nooit over.
+
+Wil je de MR's van een migratie eerst reviewen, bv. bij een grote cruft update, zet het
+dan uit in het migratiebestand:
+
+```bash
+CRUFT_UPDATE=ja
+AUTOMATISCH_MERGEN=nee
+```
+
+Zet in de GitLab-projecten **Pipelines must succeed** aan (Settings > Merge requests).
+Zonder die instelling kan GitLab een MR zonder pipeline meteen mergen, zonder CI. Het
+token moet mogen mergen op de default branch (Developer, of Maintainer bij een beschermde
+branch). De MR-beschrijving zegt of de MR automatisch gemerged wordt.
 
 ## Jenkins
 
