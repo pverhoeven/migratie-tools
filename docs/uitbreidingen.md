@@ -22,14 +22,75 @@ in Jenkins, niet in deze repo.
 
 ## 1. Impactanalyse bij een template-MR
 
-Draai de cruft update van een template-wijziging op alle services, zonder iets te
-pushen, en zet in de MR van het template hoeveel services "Gewijzigd" en hoeveel
-"Handwerk nodig" worden, met de conflicten. Dan ziet de template-beheerder vóór het
-mergen dat een wijziging bijvoorbeeld bij twaalf services botst.
+Een proef-cruft-update van een template-wijziging op alle services, vóór het mergen. De
+uitkomst komt als commentaar in de MR van het template. Dan ziet de template-beheerder
+bijvoorbeeld dat een wijziging bij twaalf services botst, en niet pas bij de uitrol.
 
-- Er is al: `uitproberen.sh` en `lib/samenvatting.sh`.
-- Nodig: een Jenkins-stap op de template-repo die de cruft update tegen de MR-branch
-  draait en de samenvatting als MR-commentaar plaatst.
+De templates staan in hun eigen git-repo's; `.cruft.json` van elke service wijst ernaar.
+De analyse hoort bij een MR op zo'n template-repo en gebruikt migratie-tools alleen als
+gereedschap. In deze repo komt niets van de templates.
+
+### Wat het doet
+
+1. Een MR op de template-repo start een pipeline (GitLab CI, of Jenkins via een
+   webhook). Die checkt migratie-tools uit en roept het aan met de MR-branch, bv.
+   `TEMPLATE_REF=<MR-branch>`.
+2. Alleen services waarvan `.cruft.json` naar déze template-repo wijst, doen mee.
+3. Per service: vers klonen, de cruft update draaien tot de laatste commit van de
+   MR-branch in plaats van tot de standaardbranch, en daarna verify (build en tests).
+   Er wordt niets gepusht en er komen geen MR's bij de services.
+4. De samenvatting komt als commentaar in de template-MR, via de GitLab API:
+
+```
+Impact van deze MR op 40 template-services:
+  Gewijzigd, build groen     31
+  Handwerk nodig (conflict)   6   klant-service, ... : application.properties
+  Build rood                  2   order-service: ApplicationTest faalt
+  Al vast op main             1   (zie hieronder)
+```
+
+### Door de MR of al vast
+
+Services lopen vaak al achter. De cruft update gaat commit voor commit en meldt bij
+welke template-commit hij stopt. Zo houdt de analyse twee gevallen uit elkaar:
+
+- **Hij stopt op een commit van de MR.** Deze wijziging veroorzaakt het probleem; dat
+  wil de template-beheerder weten.
+- **Hij stopt al op een commit van de standaardbranch.** De service zit al vast, los
+  van deze MR, en wat de MR doet is niet te beoordelen. Die telt apart.
+
+In het voorbeeld (`voorbeeld/README.md`): komt de shutdown-timeout als MR binnen, dan
+wordt bestel-service "Gewijzigd, groen", en valt klant-service onder "al vast op main",
+want die stopt al bij `fix: logging op warn`.
+
+Met de uitkomst kan de template-beheerder de wijziging anders opzetten (een nieuwe
+property in plaats van een bestaande veranderen, of de wijziging achter een
+template-variabele zetten), de teams vooraf waarschuwen, of bewust mergen.
+
+### Wat er al is en wat nodig is
+
+- Er is al: `uitproberen.sh`, `transformaties/cruft-update.sh` (kloont het template via
+  de URL in `.cruft.json`), `--zonder-verify` en `lib/samenvatting.sh`.
+- Nodig:
+  - `TEMPLATE_REF` in `cruft-update.sh`; het doel is nu altijd de standaardbranch van het
+    template.
+  - De template-commit waar een service stopt als apart veld in de resultaten; nu staat
+    die alleen in de reden ("conflict bij template b9141e5 …").
+  - Een filter op de template-URL in `.cruft.json`, als jullie meerdere templates
+    hebben.
+  - Een pipeline op de template-repo die migratie-tools aanroept en het MR-commentaar
+    plaatst.
+
+### Aandachtspunten
+
+- **MR vanuit een fork:** de branch staat dan niet in de repo waar `.cruft.json` naar
+  wijst; de job moet de ref dan uit de fork halen. Met branches in de template-repo zelf
+  speelt dit niet.
+- **Squash-merge:** de analyse ziet de losse MR-commits, de uitrol straks één commit.
+  Welke bestanden botsen verandert zelden, maar een conflict kan bij een andere commit
+  vallen.
+- **Rekentijd:** bij elke push op de MR alle services klonen, mergen en bouwen. Maak
+  verify optioneel, of draai de analyse alleen op verzoek.
 
 ## 2. Opvolgen na de uitrol
 
