@@ -1,42 +1,70 @@
 # Voorbeeld
 
-Een cruft-template voor een Spring Boot-service met Helm-chart, en twee services
-die eruit gegenereerd zijn, om migraties lokaal mee te oefenen.
+Een cruft-template voor een Spring Boot-service met Helm-chart, en twee services die
+eruit gegenereerd zijn, om migraties lokaal mee te oefenen. Alles draait lokaal: er is
+geen GitLab nodig. Draai de commando's vanuit de map van migratie-tools.
 
-```bash
-voorbeeld/opzetten.sh          # template en services in work/voorbeeld/
-voorbeeld/wijzig-template.sh   # vier template-commits (zie wijzigingen/)
-./achterstand.sh work/voorbeeld/services/*
-./uitproberen.sh voorbeeld/cruft-update.env \
-    work/voorbeeld/services/bestel-service work/voorbeeld/services/klant-service
-```
+## Overzicht
 
-Het template heeft twee variabelen die per service in `.cruft.json` staan:
+### Bestanden in deze map
 
-| Variabele | Effect in de service |
+| Bestand | Wat het is |
 |---|---|
-| `db` | sectie `datasource` in `values.yaml`, datasource-env in `deployment.yaml` |
-| `liquibase` | sectie `liquibase` in `values.yaml`, init container in `deployment.yaml` |
+| `opzetten.sh` | Zet het voorbeeld op in `work/voorbeeld/`: de template-repo en de twee services. Gooit een vorige opzet weg, dus oude clones van het voorbeeld werken daarna niet meer |
+| `wijzig-template.sh` | Voert de template-commits uit `wijzigingen/` door in de template-repo (één commit per patch, geen tags) |
+| `template/` | Het cookiecutter-template: Spring Boot-service met Helm-chart, variabelen `db` en `liquibase` |
+| `wijzigingen/` | Zes patches op het template, als conventional commits (zie hieronder) |
+| `cruft-update.env` | Voorbeeldmigratie: cruft update naar de nieuwste stand van het template |
+| `debug-opruimen.env` | Voorbeeldmigratie: recept `OpruimenDebugOutput` |
+| `opschoning.env` | Voorbeeldmigratie: recept `WekelijkseOpschoning` |
 
-bestel-service heeft `db`, klant-service `db` en `liquibase`. Cookiecutter rendert de
-if-blokken weg: in de services staat gewone YAML, zonder Jinja en zonder Helm-`if`'s
-voor dingen die ze niet hebben. Daarom wordt `deployment.yaml` wél door cookiecutter
-gerenderd; de Helm-expressies staan in het template tussen `{% raw %}`.
+### Wat `opzetten.sh` aanmaakt
 
-De template-commits: actuator en health-probes, Spring Boot 3.5.7, logging op WARN,
-resources in de Helm-chart, de datasource-pool begrenzen (`maximumPoolSize`), en
-liquibase krijgt de datasource-URL mee.
+| In `work/voorbeeld/` | Wat het is |
+|---|---|
+| `template/` | Git-repo van het template (branch `main`), zoals jullie centrale template-repo |
+| `services/bestel-service` | Gegenereerd met `db`, met eigen aanpassingen die niet botsen met het template, en rommel voor de opschoning |
+| `services/klant-service` | Gegenereerd met `db` en `liquibase`, met eigen aanpassingen die wél botsen met het template |
 
-- **bestel-service** heeft eigen aanpassingen die niet botsen met het template; de
-  migratie geeft zes commits, één per template-commit, en een groene build. De
-  liquibase-wijziging raakt alleen `.cruft.json`, want bestel-service heeft geen liquibase.
-- **klant-service** heeft de logging op `DEBUG` gezet: de update stopt bij de
-  template-commit "logging op warn" met een conflict in `application.properties`. Na
-  het oplossen volgen de chart-wijzigingen, en blijft zijn eigen databasehost
-  (`klant-db`) gewoon staan naast de nieuwe `maximumPoolSize`.
+### De services
 
-`uitproberen.sh` laat alleen zien waar het stopt (in `work/klant-service`). Het conflict
-afmaken doe je in een eigen clone, zoals met een project in IntelliJ:
+| Service | Variabelen | Eigen aanpassingen | Bij de cruft update |
+|---|---|---|---|
+| bestel-service | `db` | `max-items`, 3 replica's, validation-dependency, klasse `Bestellingen` met `System.out.println`, `BestelService` en `BestelServiceTest` met rommel | Gaat zonder handwerk door alle zes template-commits; build groen |
+| klant-service | `db`, `liquibase` | logging op `DEBUG`, eigen databasehost `klant-db` | Stopt bij "logging op warn" met een conflict in `application.properties`; daarna gaan de rest en de eigen databasehost goed samen |
+
+### De template-commits (`wijzigingen/`)
+
+| Patch | Wat het template verandert | bestel-service | klant-service |
+|---|---|---|---|
+| `01-feat-actuator-en-health-probes` | actuator-dependency, management-properties, liveness- en readiness-probes | ✓ | ✓ |
+| `02-chore-spring-boot-3.5.7` | Spring Boot 3.5.6 → 3.5.7 | ✓ | ✓ |
+| `03-fix-logging-op-warn` | `logging.level.root` INFO → WARN | ✓ | conflict |
+| `04-feat-resources-in-de-chart` | resources in `values.yaml` en `deployment.yaml` | ✓ | ✓ |
+| `05-fix-datasource-pool-begrenzen` | `maximumPoolSize` in de datasource (alleen met `db`) | ✓ | ✓ |
+| `06-feat-liquibase-gebruikt-de-datasource-url` | env van de liquibase-init container (alleen met `liquibase`) | alleen `.cruft.json` | ✓ |
+
+### Oefeningen
+
+| # | Wat | Commando | Wat je ziet |
+|---|---|---|---|
+| 1 | Opzetten | `voorbeeld/opzetten.sh && voorbeeld/wijzig-template.sh` | template met zes nieuwe commits, twee services op de eerste stand |
+| 2 | Achterstand bekijken | `./achterstand.sh work/voorbeeld/services/*` | beide services zes template-commits achter |
+| 3 | Cruft update uitproberen | `./uitproberen.sh voorbeeld/cruft-update.env work/voorbeeld/services/bestel-service work/voorbeeld/services/klant-service` | bestel-service "Gewijzigd" (zes commits), klant-service "Handwerk nodig" |
+| 4 | Het conflict afmaken | zie "Een conflict afmaken" hieronder | het script wacht, jij lost op in IntelliJ, Enter, klaar |
+| 5 | Een recept | `./uitproberen.sh voorbeeld/debug-opruimen.env work/voorbeeld/services/bestel-service` | de `println` in `Bestellingen` is weg |
+| 6 | Wekelijkse opschoning | `./uitproberen.sh voorbeeld/opschoning.env work/voorbeeld/services/bestel-service` | tien soorten rommel opgeruimd (zie hieronder); een tweede keer: "Ongewijzigd" |
+| 7 | Een variabele omzetten | zie "Een template-variabele omzetten" hieronder | init container en liquibase-sectie erbij |
+| 8 | Een eigen template-wijziging | pas `work/voorbeeld/template` aan, commit op `main`, herhaal 3 | jouw wijziging als extra commit per service |
+| 9 | Alles via het menu | `./migratie.sh` | dezelfde acties, met keuzes in plaats van commando's |
+
+Bekijk het resultaat van `uitproberen.sh` in `work/<service>` (bv.
+`git -C work/bestel-service log -p`) of in `runs/<migratie>-<tijd>/debug/<service>/`.
+
+## Een conflict afmaken
+
+`uitproberen.sh` laat alleen zien waar het stopt (in `work/klant-service`). Afmaken doe
+je in een eigen clone, zoals met een project in IntelliJ:
 
 ```bash
 git clone work/voorbeeld/services/klant-service /tmp/klant-service
@@ -45,23 +73,43 @@ cd /tmp/klant-service
 ```
 
 Het script wacht bij het conflict: open `/tmp/klant-service` in IntelliJ, kies *Git →
-Resolve Conflicts…*, kies in `application.properties` een waarde, klik *Apply* en druk
-in de terminal op Enter.
+Resolve Conflicts…*, kies in `application.properties` een waarde, klik *Apply* en druk in
+de terminal op Enter. De rest van de template-commits volgt; de eigen databasehost
+(`klant-db`) blijft staan naast de nieuwe `maximumPoolSize`.
 
-Een migratie met een recept (uit `recepten/`) verwijdert de debug-regel uit de eigen
-klasse `Bestellingen` van bestel-service:
+## De template-variabelen
+
+Het template heeft twee variabelen die per service in `.cruft.json` staan:
+
+| Variabele | Effect in de service |
+|---|---|
+| `db` | sectie `datasource` in `values.yaml`, datasource-env in `deployment.yaml` |
+| `liquibase` | sectie `liquibase` in `values.yaml`, init container in `deployment.yaml` |
+
+Cookiecutter rendert de if-blokken weg: in de services staat gewone YAML, zonder Jinja en
+zonder Helm-`if`'s voor dingen die ze niet hebben. Daarom wordt `deployment.yaml` wél door
+cookiecutter gerenderd; de Helm-expressies staan in het template tussen `{% raw %}`.
+De andere Helm-templates in `chart/templates/` worden niet gerenderd
+(`_copy_without_render`), omdat ze zelf `{{ }}` gebruiken.
+
+## Een template-variabele omzetten
+
+Een variabele achteraf omzetten doe je met `cruft-zet.sh`, niet door `.cruft.json` met de
+hand aan te passen (dan voegt de cruft update niets toe). Bijvoorbeeld liquibase aanzetten
+bij bestel-service:
 
 ```bash
-./uitproberen.sh voorbeeld/debug-opruimen.env work/voorbeeld/services/bestel-service
+git clone work/voorbeeld/services/bestel-service /tmp/bestel-service && cd /tmp/bestel-service
+/pad/naar/migratie-tools/cruft-zet.sh liquibase=true
+git show    # liquibase-sectie in values.yaml en de init container in deployment.yaml
 ```
 
-De wekelijkse opschoning probeer je op bestel-service, die rommel heeft in `BestelService`
-en `BestelServiceTest`:
+Uitzetten geeft een conflict als de service de init container zelf heeft aangepast; dat
+los je op zoals bij de cruft update: oplossen in IntelliJ en Enter in de terminal.
 
-```bash
-./uitproberen.sh voorbeeld/opschoning.env work/voorbeeld/services/bestel-service
-git -C work/bestel-service show
-```
+## De rommel voor de wekelijkse opschoning
+
+bestel-service heeft rommel in `BestelService` en `BestelServiceTest`:
 
 | Rommel in de service | Recept |
 |---|---|
@@ -75,22 +123,3 @@ git -C work/bestel-service show
 | `toString()` zonder `@Override` | `MissingOverrideAnnotation` |
 | `e.printStackTrace()` | `PrintStackTraceToLogError` |
 | `public` testklasse en testmethodes | `JUnit5BestPractices` |
-
-Draai je de opschoning daarna nog een keer, dan is de uitkomst "Ongewijzigd".
-
-Een eigen template-wijziging proberen: pas `work/voorbeeld/template` aan, commit op
-`main` en draai de migratie opnieuw.
-
-Een variabele achteraf omzetten doe je met `cruft-zet.sh`, niet door `.cruft.json` met
-de hand aan te passen (dan voegt de cruft update niets toe). Bijvoorbeeld liquibase
-aanzetten bij bestel-service:
-
-```bash
-git clone work/voorbeeld/services/bestel-service /tmp/bestel-service && cd /tmp/bestel-service
-/pad/naar/migratie-tools/cruft-zet.sh liquibase=true
-git show    # liquibase-sectie in values.yaml en de init container in deployment.yaml
-```
-
-Uitzetten geeft een conflict als de service de init container zelf heeft aangepast; dat
-los je op zoals bij de cruft update: oplossen in IntelliJ en Enter in de terminal. Helm-templates in `chart/templates/` worden niet
-door cookiecutter gerenderd (`_copy_without_render`), omdat ze zelf `{{ }}` gebruiken.
