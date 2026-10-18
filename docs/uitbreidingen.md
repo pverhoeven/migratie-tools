@@ -11,7 +11,7 @@ in Jenkins, niet in deze repo.
 | # | Uitbreiding | Prioriteit | Status |
 |---|---|---|---|
 | 1 | [Impactanalyse bij een template-MR](#1-impactanalyse-bij-een-template-mr) | hoog | Idee |
-| 2 | [Opvolgen na de uitrol](#2-opvolgen-na-de-uitrol) | hoog | Idee |
+| 2 | [Opvolgen na de uitrol](#2-opvolgen-na-de-uitrol) | hoog | Klaar |
 | 3 | [Snel reageren op een kwetsbaarheid](#3-snel-reageren-op-een-kwetsbaarheid) | hoog | Idee |
 | 4 | [Werk naar het juiste team](#4-werk-naar-het-juiste-team) | middel | Idee |
 | 5 | [Automatisch mergen bij veilige migraties](#5-automatisch-mergen-bij-veilige-migraties) | middel | Idee |
@@ -107,13 +107,14 @@ template-variabele zetten), de teams vooraf waarschuwen, of bewust mergen.
 
 ## 2. Opvolgen na de uitrol
 
-`run.sh` maakt de MR's aan, maar daarna is er geen overzicht. Een `status.sh <migratie>`
-laat per service zien of de MR open, gemerged of gesloten is, of de pipeline rood is en
-hoe lang de MR al open staat. Samen met de werklijst "Handwerk nodig" zie je zo wanneer
-een migratie echt af is.
+`run.sh` maakt de MR's aan, maar daarna was er geen overzicht. `status.sh <migratie>`
+laat per service zien of de MR open, gemerged of gesloten is, of de pipeline rood is of
+de MR een conflict heeft, en hoelang hij al open staat. Services zonder MR (handwerk of
+wachtend) komen uit de laatste run in `runs/`. Zo zie je wanneer een migratie echt af is
+(zie "Status na de uitrol" in de README; ook in het menu).
 
-- Er is al: `lib/gitlab.sh`, de branch en de labels per migratie.
-- Nodig: een script dat de MR's per label of branch ophaalt via de GitLab API.
+- Nog te doen, optioneel: een Jenkins-job die `status.sh` geregeld draait, met de
+  werklijst naar het teamkanaal (punt 4).
 
 ## 3. Snel reageren op een kwetsbaarheid
 

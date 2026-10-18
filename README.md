@@ -16,6 +16,7 @@ Begrippen staan in [GLOSSARY.md](GLOSSARY.md), besluiten in [docs/adr](docs/adr)
 | `run.sh` | Een migratie over de hele GitLab-groep (via multi-gitter); standaard een dry-run, met `--go` echt | tijdelijke clones | met `--go`: per service een MR | ja |
 | `cruft-zet.sh` | Een template-variabele omzetten in één service, bv. `liquibase=true`; wacht bij een conflict | je eigen clone | nee, dat doe je zelf | nee |
 | `achterstand.sh` | Per template-service: op welke stand van het template hij zit en hoeveel template-commits hij achterloopt; wijzigt niets | – | nee | alleen voor de hele groep |
+| `status.sh` | Na de uitrol: per service de MR van een migratie (gemerged, open met pipeline, gesloten) en wie nog geen MR heeft; wijzigt niets | – | nee | ja |
 
 Wanneer welke:
 
@@ -26,6 +27,7 @@ Wanneer welke:
 3. Handwerk op de werklijst: `in-repo.sh` in je eigen clone van die service.
 4. Een service die een onderdeel van het template erbij wil (of kwijt): `cruft-zet.sh`.
 5. Twijfel waar je staat: `achterstand.sh`.
+6. Na de uitrol: `status.sh <migratie>` tot alles gemerged is.
 
 Of start gewoon `migratie.sh`; dat vraagt het allemaal en toont het commando dat het draait.
 
@@ -42,7 +44,7 @@ Of start gewoon `migratie.sh`; dat vraagt het allemaal en toont het commando dat
 | `lib/render-template.py` | Genereert één stand van het template zoals cruft dat doet (gebruikt cruft 2.16.0) |
 | `lib/migratie.sh` | Migratiebestand laden, branch starten, handwerk hervatten en erop wachten, PR-beschrijving |
 | `lib/recepten.sh` | Recept controleren (bestaat, heeft een test) en `recepten/` bouwen en installeren |
-| `lib/gitlab.sh` | GitLab-API: open MR's en de projecten van de groep |
+| `lib/gitlab.sh` | GitLab-API: open MR's, de projecten van de groep, de MR's van een migratie en hun pipeline |
 | `lib/samenvatting.sh` | Het overzicht per uitkomst aan het eind van een run |
 | `lib/opruimen.sh`, `lib/common.sh` | `target/` opruimen; algemene hulpfuncties |
 | `jenkins/gereedschap.sh` | Installeert cruft, multi-gitter en jq zonder Docker (voor de `Jenkinsfile`) |
@@ -354,6 +356,28 @@ Dat geldt voor `run.sh` (ook de dry-run) en `uitproberen.sh`.
 Toont per template-service op welke template-commit hij zit en hoeveel commits van het
 template hij achterloopt, de grootste achterstand bovenaan. Handig vóór je een nieuwe
 template-migratie start: services die ver achterlopen krijgen meer kans op conflicten.
+
+## Status na de uitrol
+
+```bash
+./status.sh cruft-update-2026-10
+```
+
+Een migratie is pas klaar als alle MR's gemerged zijn. `status.sh` vraagt bij GitLab de
+MR's van de migratie op (labels `migratie` en de naam van de migratie, in elke toestand;
+per service de nieuwste) en toont ze per groep, de werklijst bovenaan:
+
+| Groep | Wat te doen |
+|---|---|
+| Open, conflict met de doelbranch | de MR bijwerken (bv. rebasen) |
+| Open, pipeline rood | de build van de service repareren |
+| Geen MR | handwerk of wachtend volgens de laatste run in `runs/<migratie>-*/`; afmaken met `in-repo.sh` |
+| Open, pipeline loopt of ontbreekt; Open, pipeline groen | reviewen en mergen; per MR staat erbij hoelang hij open is |
+| Gesloten zonder merge | bewust afgewezen, of opnieuw uitrollen |
+
+Bovenaan staat hoeveel MR's al gemerged zijn. Nodig: `GITLAB_TOKEN` en `GITLAB_GROUP`
+(zoals bij `run.sh`). Services zonder MR kent het alleen als de run in deze map staat; in
+Jenkins staat `runs/` in de artefacten van de build.
 
 ## Jenkins
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Interactief menu voor migratie-tools: kies wat je wilt doen en welke migratie (of maak
 # er een), bevestig de branch en de PR-titel, en het menu start het bijbehorende script.
-# De losse scripts (in-repo.sh, uitproberen.sh, run.sh, cruft-zet.sh, achterstand.sh) blijven
+# De losse scripts (in-repo.sh, uitproberen.sh, run.sh, cruft-zet.sh, achterstand.sh, status.sh) blijven
 # gewoon bruikbaar; het menu toont aan het eind het commando dat het uitvoert.
 set -euo pipefail
 
@@ -189,7 +189,10 @@ kies "Wat wil je doen?" \
        of uit, en voert het effect daarvan door." \
   "Achterstand bekijken (achterstand.sh)
        Per template-service: op welke stand van het template hij zit en
-       hoeveel template-commits hij achterloopt. Wijzigt niets."
+       hoeveel template-commits hij achterloopt. Wijzigt niets." \
+  "Status van een uitgerolde migratie (status.sh)
+       Per service de MR: gemerged, open (met pipeline) of gesloten, en wie
+       nog geen MR heeft. Wijzigt niets."
 
 case "$KEUZE" in
   1)
@@ -236,4 +239,8 @@ case "$KEUZE" in
     vraag "Paden naar lokale repo's (leeg = alle template-services in de GitLab-groep)" ""
     read -r -a repos <<< "$ANTWOORD"
     uitvoeren "$ROOT/achterstand.sh" ${repos[@]+"${repos[@]}"} ;;
+  6)
+    vraag "Naam van de migratie (het label op de MR's, bv. opschoning-2026-w43)" ""
+    [ -n "$ANTWOORD" ] || { echo "geen migratie opgegeven" >&2; exit 2; }
+    uitvoeren "$ROOT/status.sh" "$ANTWOORD" ;;
 esac

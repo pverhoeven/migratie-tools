@@ -34,3 +34,26 @@ groep_projecten() {
     page=$((page + 1))
   done
 }
+
+# Alle MR's van één migratie in de groep (labels "migratie" en de naam), in elke
+# toestand, als regels "<project-id><TAB><project-pad><TAB><iid><TAB><state><TAB>
+# <aangemaakt><TAB><dagen open><TAB><conflict met de doelbranch: true|false><TAB><url>".
+migratie_mrs() {  # <naam van de migratie>
+  local groep labels page=1 resp n
+  groep="$(jq -rn --arg g "$GITLAB_GROUP" '$g | @uri')"
+  labels="$(jq -rn --arg l "migratie,$1" '$l | @uri')"
+  while :; do
+    resp="$(gitlab_api "groups/$groep/merge_requests?state=all&labels=$labels&per_page=100&page=$page")" || return 1
+    n="$(jq length <<< "$resp")"
+    jq -r '.[] | [.project_id, (.references.full | sub("!.*$"; "")), .iid, .state, .created_at,
+                  ((now - (.created_at | sub("\\.[0-9]+"; "") | fromdateiso8601)) / 86400 | floor),
+                  (.has_conflicts // false), .web_url] | @tsv' <<< "$resp"
+    [ "$n" -lt 100 ] && break
+    page=$((page + 1))
+  done
+}
+
+# De status van de laatste pipeline van een MR (success, failed, running, ...), of "geen".
+mr_pipeline() {  # <project-id> <iid>
+  gitlab_api "projects/$1/merge_requests/$2" | jq -r '.head_pipeline.status // "geen"'
+}
