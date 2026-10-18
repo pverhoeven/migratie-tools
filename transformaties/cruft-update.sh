@@ -8,6 +8,8 @@
 #   - elk bestand 3-way mergen (basis = vorige stand, ours = service, theirs = volgende)
 #   - .cruft.json bijwerken en committen als conventional commit: het type van de
 #     template-commit met scope cruft, bv. "fix(cruft): logging op warn (777021d)"
+# Met TEMPLATE_REF=<branch of commit> is het doel die ref in plaats van de standaardbranch:
+# een template-wijziging uitproberen vóór die gemerged is (niet voor een echte run).
 # Bij het eerste conflict stopt de update, met diff3-conflictmarkers in de bestanden.
 # De conflicten staan ook als echte git-conflicten in de index (basis, service,
 # template), zodat een IDE (bv. IntelliJ: Git > Resolve Conflicts) ze 3-way kan mergen.
@@ -30,7 +32,13 @@ git clone --quiet "$(jq -r .template .cruft.json)" "$tmp/template"
 tpl() { git -C "$tmp/template" "$@"; }
 
 huidig="$(jq -r .commit .cruft.json)"
-doel="$(tpl rev-parse HEAD)"
+if [ -n "${TEMPLATE_REF:-}" ]; then
+  doel="$(tpl rev-parse -q --verify "origin/$TEMPLATE_REF^{commit}" || tpl rev-parse -q --verify "$TEMPLATE_REF^{commit}")" \
+    || { reden "TEMPLATE_REF $TEMPLATE_REF bestaat niet in het template; is de branch gepusht?"; exit 1; }
+  echo "template-ref $TEMPLATE_REF ($(tpl rev-parse --short "$doel")) in plaats van de standaardbranch"
+else
+  doel="$(tpl rev-parse HEAD)"
+fi
 tpl cat-file -e "$huidig^{commit}" 2>/dev/null \
   || { reden "de template-commit ${huidig:0:7} uit .cruft.json bestaat niet (meer) in het template; is de historie van het template herschreven?"; exit 1; }
 

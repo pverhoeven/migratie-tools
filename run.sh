@@ -54,6 +54,10 @@ if [ "$go" -eq 1 ] && [ "$ZONDER_VERIFY" = "1" ]; then
   echo "--zonder-verify mag alleen bij een dry-run" >&2
   exit 2
 fi
+if [ "$go" -eq 1 ] && [ -n "${TEMPLATE_REF:-}" ]; then
+  echo "TEMPLATE_REF mag alleen bij een dry-run: MR's horen bij de standaardbranch van het template" >&2
+  exit 2
+fi
 
 args=(run "$ROOT/repo-runner.sh"
   --platform gitlab

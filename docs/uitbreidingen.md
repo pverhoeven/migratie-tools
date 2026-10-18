@@ -69,11 +69,9 @@ template-variabele zetten), de teams vooraf waarschuwen, of bewust mergen.
 
 ### Wat er al is en wat nodig is
 
-- Er is al: `uitproberen.sh`, `transformaties/cruft-update.sh` (kloont het template via
-  de URL in `.cruft.json`), `--zonder-verify` en `lib/samenvatting.sh`.
+- Er is al: `uitproberen.sh` met `TEMPLATE_REF=<branch>` (handmatig een gepushte
+  template-branch uitproberen, zie de README), `--zonder-verify` en `lib/samenvatting.sh`.
 - Nodig:
-  - `TEMPLATE_REF` in `cruft-update.sh`; het doel is nu altijd de standaardbranch van het
-    template.
   - De template-commit waar een service stopt als apart veld in de resultaten; nu staat
     die alleen in de reden ("conflict bij template b9141e5 …").
   - Een filter op de template-URL in `.cruft.json`, als jullie meerdere templates

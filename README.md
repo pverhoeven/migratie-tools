@@ -229,6 +229,20 @@ bestanden (inclusief de basis). De conflicten staan ook als echte git-conflicten
 index (basis, service, template), zodat je ze in je IDE 3-way kunt mergen. Elke
 template-commit wordt een eigen commit in de service.
 
+### Een template-branch uitproberen
+
+Een wijziging in het template probeer je uit vóór die gemerged is: push hem naar een
+branch van de template-repo en geef die mee als `TEMPLATE_REF` (een branch of commit).
+De cruft update gaat dan naar die branch in plaats van naar de standaardbranch:
+
+```bash
+TEMPLATE_REF=feature/mijn-wijziging ./uitproberen.sh cruft-update ~/code/service-a ~/code/service-b
+```
+
+Stopt een service op een commit van jouw branch, dan veroorzaakt jouw wijziging het
+conflict; stopt hij eerder, dan zat de service al vast. `run.sh --go` weigert
+`TEMPLATE_REF`: MR's horen bij de standaardbranch van het template.
+
 ## In je eigen clone
 
 Heb je de service al als project open, draai de migratie dan direct in die clone:
