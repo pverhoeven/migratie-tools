@@ -10,14 +10,18 @@ RECEPTEN_ARTEFACT="local.migratietools:recepten:1.0-SNAPSHOT"
 
 recepten_modules() {  # <root>: de modules met recepten, één per regel
   echo "$1/recepten"
-  if [ -n "${RECEPTEN_MAP:-}" ]; then echo "$RECEPTEN_MAP"; fi
+  case "${RECEPTEN_MAP:-}" in
+    "") ;;
+    /*) echo "$RECEPTEN_MAP" ;;
+    *) echo "$1/$RECEPTEN_MAP" ;;   # relatief: vanaf de map van migratie-tools
+  esac
 }
 
 # Een recept uit een migratie moet in een van de modules staan (YAML of Java) en daar een
 # test hebben.
 controleer_recept() {  # <root> <recept>
   local naam="$2" kort="${2##*.}" m
-  if [ -n "${RECEPTEN_MAP:-}" ] && [ ! -f "$RECEPTEN_MAP/pom.xml" ]; then
+  if [ -n "${RECEPTEN_MAP:-}" ] && [ ! -f "$(recepten_modules "$1" | tail -1)/pom.xml" ]; then
     echo "RECEPTEN_MAP=$RECEPTEN_MAP is geen Maven-module (geen pom.xml)" >&2
     exit 2
   fi

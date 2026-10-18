@@ -17,6 +17,7 @@ geen GitLab nodig. Draai de commando's vanuit de map van migratie-tools.
 | `gedeelde-jar/` | Een kleine jar (`nl.voorbeeld:gedeelde-jar`) die services gebruiken; `opzetten.sh` installeert hem in `~/.m2` |
 | `cruft-update.env` | Voorbeeldmigratie: cruft update naar de nieuwste stand van het template |
 | `gedeelde-jar.env` | Voorbeeldmigratie van een feature: gedeelde jar via een init container, alleen voor afnemers |
+| `intern/` | Nagebootste interne repo met een eigen migratie (`migraties/eigen-opschoning.env`) en een eigen receptenmodule (`recepten/`, `nl.voorbeeld.intern:eigen-recepten`) |
 | `debug-opruimen.env` | Voorbeeldmigratie: recept `OpruimenDebugOutput` |
 | `opschoning.env` | Voorbeeldmigratie: recept `WekelijkseOpschoning` |
 
@@ -62,8 +63,9 @@ geen GitLab nodig. Draai de commando's vanuit de map van migratie-tools.
 | 6 | Wekelijkse opschoning | `./uitproberen.sh voorbeeld/opschoning.env work/voorbeeld/services/bestel-service` | tien soorten rommel opgeruimd (zie hieronder); een tweede keer: "Ongewijzigd" |
 | 7 | Een variabele omzetten | zie "Een template-variabele omzetten" hieronder | init container en liquibase-sectie erbij |
 | 8 | Een feature voor alle afnemers | zie "Een feature: de gedeelde jar" hieronder | alleen klant-service doet mee; bestel- en losse-service "Niet van toepassing" |
-| 9 | Een eigen template-wijziging | pas `work/voorbeeld/template` aan, commit op `main`, herhaal 3 | jouw wijziging als extra commit per service |
-| 10 | Alles via het menu | `./migratie.sh` | dezelfde acties, met keuzes in plaats van commando's |
+| 9 | Eigen migraties en recepten | zie "Eigen migraties en recepten" hieronder | de eigen migratie draait met een eigen recept dat ingebouwde recepten aanroept |
+| 10 | Een eigen template-wijziging | pas `work/voorbeeld/template` aan, commit op `main`, herhaal 3 | jouw wijziging als extra commit per service |
+| 11 | Alles via het menu | `./migratie.sh` | dezelfde acties, met keuzes in plaats van commando's |
 
 Bekijk het resultaat van `uitproberen.sh` in `work/<service>` (bv.
 `git -C work/bestel-service log -p`) of in `runs/<migratie>-<tijd>/debug/<service>/`.
@@ -91,6 +93,37 @@ doen niet mee. klant-service stopt eerst bij het bekende logging-conflict; maak 
 zoals hieronder, dan volgen de template-commits, `feat(cruft): gedeelde_jar aangezet` en
 `chore(recept): …GedeeldeJarProvided`, en een groene build. Services zonder de variabele
 krijgen de Helm-helper `_gedeelde-jar.tpl` niet: een hook in het template haalt hem weg.
+
+## Eigen migraties en recepten
+
+Migraties en recepten van je eigen organisatie horen niet in migratie-tools zelf, maar in
+een eigen (interne) repo. `voorbeeld/intern/` bootst die na:
+
+```
+voorbeeld/intern/
+  migraties/eigen-opschoning.env      RECEPT=nl.voorbeeld.intern.EigenOpschoning
+  recepten/                           eigen Maven-module nl.voorbeeld.intern:eigen-recepten
+    src/main/resources/META-INF/rewrite/eigen.yml
+    src/test/java/.../EigenOpschoningTest.java
+```
+
+Het eigen recept `nl.voorbeeld.intern.EigenOpschoning` roept twee ingebouwde recepten aan:
+`local.migratietools.WekelijkseOpschoning` en `local.migratietools.OpruimenDebugOutput`.
+Daarvoor heeft de eigen module `local.migratietools:recepten` als dependency.
+
+Probeer het met de twee instellingen op de commandoregel (of in `config.env`; een relatief
+pad geldt vanaf de map van migratie-tools):
+
+```bash
+MIGRATIES_MAP=voorbeeld/intern/migraties RECEPTEN_MAP=voorbeeld/intern/recepten \
+  ./uitproberen.sh eigen-opschoning work/voorbeeld/services/bestel-service
+git -C work/bestel-service show --stat
+```
+
+Beide receptenmodules worden gebouwd en getest. Daarna is in bestel-service de rommel uit
+`BestelService` en `BestelServiceTest` opgeruimd en de `println` uit `Bestellingen` weg.
+Met dezelfde instellingen toont `./migratie.sh` de eigen migratie en het eigen recept, en
+zet het een nieuwe migratie in `voorbeeld/intern/migraties`.
 
 ## Een conflict afmaken
 

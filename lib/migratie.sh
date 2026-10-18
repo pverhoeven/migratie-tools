@@ -15,11 +15,16 @@
 # staan in het bestand, zodat herhaalde runs dezelfde branch gebruiken.
 # De naam van het bestand is de naam van de migratie en van de branch.
 
-# De mappen met migraties, één per regel: eerst MIGRATIES_MAP, dan migraties/.
+# De mappen met migraties, één per regel: eerst MIGRATIES_MAP, dan migraties/. Een
+# relatief pad geldt vanaf de map van migratie-tools (waar config.env staat).
 migratie_mappen() {
   local root
   root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-  if [ -n "${MIGRATIES_MAP:-}" ]; then echo "$MIGRATIES_MAP"; fi
+  case "${MIGRATIES_MAP:-}" in
+    "") ;;
+    /*) echo "$MIGRATIES_MAP" ;;
+    *) echo "$root/$MIGRATIES_MAP" ;;   # relatief: vanaf de map van migratie-tools
+  esac
   echo "$root/migraties"
 }
 

@@ -1,0 +1,9 @@
+# Voorbeeld van een eigen recept: combineert ingebouwde recepten van migratie-tools.
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: nl.voorbeeld.intern.EigenOpschoning
+displayName: Eigen opschoning
+description: De wekelijkse opschoning van migratie-tools, plus debug-output opruimen.
+recipeList:
+  - local.migratietools.WekelijkseOpschoning
+  - local.migratietools.OpruimenDebugOutput
