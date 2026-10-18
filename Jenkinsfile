@@ -14,7 +14,11 @@
 //                                     op de template-repo (git via HTTPS)
 //     MIGRATIE_JDK, MIGRATIE_MAVEN    namen van JDK- en Maven-installaties in Jenkins (Tools);
 //                                     leeg: java en mvn uit het PATH van de agent. JDK 21 of nieuwer.
-//     MIGRATIE_CRON                   cron voor de wekelijkse opschoning, bv. 'H 6 * * 1'; leeg: uit
+//     MIGRATIE_SJABLOON               migratie die deze job steeds opnieuw draait, als ronde
+//                                     (bv. opschoning of cruft-update); zie hieronder
+//     MIGRATIE_RONDE                  datumformaat van de ronde (standaard '%G-w%V', per week;
+//                                     bv. '%Y-%m' voor maandelijks)
+//     MIGRATIE_CRON                   cron voor geplande builds, bv. 'H 6 * * 1'; leeg: uit
 //     MIGRATIE_GIT_NAAM, MIGRATIE_GIT_EMAIL
 //                                     auteur van de commits in de services
 //     MIGRATIE_EIGEN_REPO             git-URL van een eigen (interne) repo met migraties/ en/of
@@ -25,9 +29,12 @@
 //     PIP_INDEX_URL, MULTI_GITTER_BASIS, JQ_BASIS
 //                                     downloads via een mirror (bv. Nexus), zie jenkins/gereedschap.sh
 //
-// Handmatig starten: vul MIGRATIE in (naam uit migraties/ of pad), standaard een dry-run.
-// Een geplande build (MIGRATIE_CRON) maakt zelf migraties/opschoning-<jaar>-w<week>.env aan
-// en draait die met --go.
+// Meerdere jobs, één Jenkinsfile: geef elke job (of map) zijn eigen MIGRATIE_SJABLOON en
+// MIGRATIE_CRON. Een build van het sjabloon maakt er een ronde van, bv.
+// migraties/opschoning-2026-w43.env, zodat elke ronde een eigen branch krijgt.
+//   - geplande build: de ronde van het sjabloon, met --go
+//   - handmatige build: MIGRATIE als die is ingevuld, anders de ronde van het sjabloon;
+//     standaard een dry-run (GO)
 
 pipeline {
     agent any
@@ -41,7 +48,7 @@ pipeline {
 
     parameters {
         string(name: 'MIGRATIE', defaultValue: '',
-               description: 'Naam uit migraties/ (zonder .env) of pad naar een migratiebestand')
+               description: 'Naam (zonder .env) of pad van een migratiebestand. Leeg: de ronde van MIGRATIE_SJABLOON')
         booleanParam(name: 'GO', defaultValue: false,
                      description: "Echt uitvoeren en MR's aanmaken. Uit: dry-run, er wordt niets gepusht")
         string(name: 'REPO_INCLUDE', defaultValue: '',
@@ -109,20 +116,33 @@ pipeline {
             steps {
                 script {
                     def gepland = !currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').isEmpty()
-                    if (gepland) {
-                        env.MIGRATIE_NAAM = sh(script: 'echo "opschoning-$(date +%G-w%V)"', returnStdout: true).trim()
-                        writeFile file: "migraties/${env.MIGRATIE_NAAM}.env",
-                                  text: "# Wekelijkse opschoning, aangemaakt door Jenkins.\nRECEPT=local.migratietools.WekelijkseOpschoning\n"
-                        env.GO_VLAG = '--go'
+                    def gekozen = params.MIGRATIE?.trim()
+                    if (gepland || !gekozen) {
+                        if (!env.MIGRATIE_SJABLOON?.trim()) {
+                            error(gepland ? 'Een geplande build heeft MIGRATIE_SJABLOON nodig'
+                                          : 'Vul MIGRATIE in (naam of pad), of zet MIGRATIE_SJABLOON voor deze job')
+                        }
+                        // Een ronde van het sjabloon: een kopie met de ronde in de naam, en zonder
+                        // BRANCH, zodat elke ronde een eigen branch krijgt.
+                        withEnv(["RONDE_FORMAAT=${env.MIGRATIE_RONDE ?: '%G-w%V'}"]) {
+                            sh '''
+                                bron="$(bash -c '. lib/migratie.sh; laad_migratie "$1" >/dev/null && echo "$MIGRATIE_BESTAND"' _ "$MIGRATIE_SJABLOON")"
+                                naam="$(basename "$bron" .env)-$(date +"$RONDE_FORMAAT")"
+                                {
+                                    echo "# Ronde van $(basename "$bron"), aangemaakt door Jenkins."
+                                    grep -v '^BRANCH=' "$bron"
+                                } > "migraties/$naam.env"
+                                echo "$naam" > .migratie-naam
+                            '''
+                        }
+                        env.MIGRATIE_NAAM = readFile('.migratie-naam').trim()
+                        env.GO_VLAG = (gepland || params.GO) ? '--go' : ''
                     } else {
-                        if (!params.MIGRATIE?.trim()) {
-                            error('Vul MIGRATIE in: een naam uit migraties/ of een pad')
-                        }
-                        if (params.GO && params.ZONDER_VERIFY) {
-                            error('ZONDER_VERIFY mag alleen bij een dry-run')
-                        }
-                        env.MIGRATIE_NAAM = params.MIGRATIE.trim()
+                        env.MIGRATIE_NAAM = gekozen
                         env.GO_VLAG = params.GO ? '--go' : ''
+                    }
+                    if (!gepland && params.GO && params.ZONDER_VERIFY) {
+                        error('ZONDER_VERIFY mag alleen bij een dry-run')
                     }
                     currentBuild.displayName = "#${env.BUILD_NUMBER} ${env.MIGRATIE_NAAM}" + (env.GO_VLAG ? '' : ' (dry-run)')
                 }

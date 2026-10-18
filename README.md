@@ -53,7 +53,7 @@ Of start gewoon `migratie.sh`; dat vraagt het allemaal en toont het commando dat
 
 | Map | Inhoud |
 |---|---|
-| `migraties/` | De migraties, één bestand per migratie (`<naam>.env`); `_voorbeeld.env` is het sjabloon |
+| `migraties/` | De migraties, één bestand per migratie (`<naam>.env`); `_voorbeeld.env` legt elke regel uit; `cruft-update.env` en `opschoning.env` zijn sjablonen voor terugkerende Jenkins-jobs |
 | `recepten/` | Maven-module met de OpenRewrite-recepten (YAML en Java) en hun tests |
 | `runs/` | Per run de resultaten en de debug-uitvoer (niet in git) |
 | `work/` | De clones van `uitproberen.sh` en het voorbeeld (niet in git) |
@@ -351,7 +351,9 @@ bv. als *folder properties* op de map van de job of als globale eigenschappen:
 | `MIGRATIE_GITLAB_CREDENTIALS` | ja | id van een *Secret text*-credential: GitLab-token met api-rechten op de groep |
 | `MIGRATIE_TEMPLATE_CREDENTIALS` | als de template-repo niet zonder inloggen te lezen is | id van een *Username with password*-credential met leesrechten op de template-repo (git via HTTPS) |
 | `MIGRATIE_JDK`, `MIGRATIE_MAVEN` | nee | namen van JDK- en Maven-installaties in Jenkins (*Tools*); leeg: `java` en `mvn` uit het PATH. JDK 21 of nieuwer, want `recepten/` is voor Java 21 gebouwd |
-| `MIGRATIE_CRON` | nee | cron voor de wekelijkse opschoning, bv. `H 6 * * 1`; leeg: uit |
+| `MIGRATIE_SJABLOON` | nee | de migratie die deze job steeds opnieuw draait, als ronde (zie hieronder) |
+| `MIGRATIE_RONDE` | nee | datumformaat van de ronde: standaard `%G-w%V` (per week), bv. `%Y-%m` voor maandelijks |
+| `MIGRATIE_CRON` | nee | cron voor geplande builds, bv. `H 6 * * 1`; leeg: uit |
 | `MIGRATIE_GIT_NAAM`, `MIGRATIE_GIT_EMAIL` | nee | auteur van de commits in de services |
 | `MIGRATIE_EIGEN_REPO` | nee | git-URL van een eigen repo met `migraties/` en/of `recepten/` (zie "Eigen migraties en recepten") |
 | `MIGRATIE_EIGEN_BRANCH`, `MIGRATIE_EIGEN_CREDENTIALS` | nee | branch van die repo (standaard `main`) en id van een credential om hem te lezen |
@@ -369,8 +371,24 @@ service de patches en de uitvoer. Is er handwerk nodig, dan wordt de build *unst
 de beschrijving van de build telt de uitkomsten. Bij *unstable* en *failure* is er een
 plek voor een eigen melding (bv. naar een chatkanaal).
 
-Met `MIGRATIE_CRON` gezet maakt een geplande build zelf
-`migraties/opschoning-<jaar>-w<week>.env` aan en draait die met `--go`.
+### Meerdere jobs
+
+Alle jobs gebruiken dezelfde `Jenkinsfile`; per job (of per map) zet je in Jenkins welke
+migratie hij draait. Bijvoorbeeld:
+
+| Job | `MIGRATIE_SJABLOON` | `MIGRATIE_RONDE` | `MIGRATIE_CRON` |
+|---|---|---|---|
+| cruft update | `cruft-update` | `%Y-%m` | `H 6 1 * *` (maandelijks) |
+| wekelijkse opschoning | `opschoning` | (standaard, per week) | `H 6 * * 1` |
+| features, incidenteel | – | – | – (bij het starten `MIGRATIE` invullen) |
+
+Een build van een job met een sjabloon maakt er een ronde van: een kopie met de ronde in
+de naam, bv. `opschoning-2026-w43`, zodat elke ronde een eigen branch en eigen MR's krijgt
+(een `BRANCH=` uit het sjabloon gaat er in de kopie uit). Een geplande build draait die
+ronde met `--go`; een handmatige build draait `MIGRATIE` als die is ingevuld, anders de
+ronde van het sjabloon, standaard als dry-run. `migraties/cruft-update.env` en
+`migraties/opschoning.env` zijn de algemene sjablonen; eigen sjablonen zet je in
+`MIGRATIES_MAP`.
 
 ## Tips
 
