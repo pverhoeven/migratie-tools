@@ -70,9 +70,9 @@ kebab() { sed -E 's/([a-z0-9])([A-Z])/\1-\2/g' <<< "$1" | tr '[:upper:]' '[:lowe
 
 nieuwe_migratie() {  # maakt migraties/<naam>.env aan; het pad komt in MIGRATIEBESTAND
   local cruft=0 recept="" naam titel lijst=()
-  ja "cruft update meenemen?" j && cruft=1
+  ja "Cruft update meenemen (services bijwerken naar de nieuwste stand van het template)?" j && cruft=1
   while IFS= read -r r; do lijst+=("$r"); done < <(recepten | sort)
-  kies "Recept?" "geen" "${lijst[@]}"
+  kies "Recept uit recepten/ (OpenRewrite)?" "geen" "${lijst[@]}"
   [ "$KEUZE" -gt 1 ] && recept="${lijst[$((KEUZE - 2))]}"
   if [ "$cruft" -eq 0 ] && [ -z "$recept" ]; then
     echo "een migratie heeft een cruft update en/of een recept nodig" >&2; exit 2
@@ -108,7 +108,7 @@ kies_migratie() {  # het pad komt in MIGRATIEBESTAND
     opties+=("$(printf '%-34s %s' "$(basename "$f" .env)" "$(beschrijf "$f")")")
   done
   NIEUWE_TITEL=""
-  kies "Welke migratie?" ${opties[@]+"${opties[@]}"} "nieuwe migratie…" "ander migratiebestand (pad)…"
+  kies "Welke migratie?" ${opties[@]+"${opties[@]}"} "nieuwe migratie maken…" "ander migratiebestand (pad opgeven)…"
   if [ "$KEUZE" -le ${#bestanden[@]} ]; then
     MIGRATIEBESTAND="${bestanden[$((KEUZE - 1))]}"
   elif [ "$KEUZE" -eq $(( ${#bestanden[@]} + 1 )) ]; then
@@ -147,18 +147,28 @@ uitvoeren() {  # <commando...>: tonen, bevestigen en starten
 
 # --- menu ------------------------------------------------------------------------------
 
-echo "migratie-tools"
+echo "migratie-tools: migraties (cruft update en/of OpenRewrite-recept) uitrollen over services"
 echo
 kies "Wat wil je doen?" \
-  "migratie in een repo draaien             (in-repo.sh)" \
-  "migratie lokaal op clones proberen       (local.sh)" \
-  "migratie over de hele GitLab-groep       (run.sh)" \
-  "template-variabele omzetten in een repo  (cruft-zet.sh)" \
-  "achterstand bekijken                     (achterstand.sh)"
+  "Migratie in een repo draaien (in-repo.sh)
+       In je eigen clone, bv. het project dat je in IntelliJ open hebt. Maakt een
+       branch en commits; pushen en de MR openen doe je zelf." \
+  "Migratie proberen op verse clones (local.sh)
+       Kloont services naar work/ en draait de migratie daar. Er wordt niets
+       gepusht; om te zien wat een migratie doet." \
+  "Migratie over de hele GitLab-groep (run.sh)
+       Draait de migratie op alle services en maakt per service een MR. Eerst
+       een dry-run, daarna vraagt het menu of het echt moet." \
+  "Template-variabele omzetten in een repo (cruft-zet.sh)
+       Zet een keuze uit het template om voor één service, bv. liquibase aan
+       of uit, en voert het effect daarvan door." \
+  "Achterstand bekijken (achterstand.sh)
+       Per template-service: op welke stand van het template hij zit en
+       hoeveel template-commits hij achterloopt. Wijzigt niets."
 
 case "$KEUZE" in
   1)
-    vraag "Repo" "$PWD"; repo="$ANTWOORD"
+    vraag "Pad naar de repo" "$PWD"; repo="$ANTWOORD"
     kies_migratie; branch_en_titel
     branch="$(bash -c '. "$1/lib/migratie.sh"; laad_migratie "$2" >/dev/null; echo "$BRANCH"' _ "$ROOT" "$MIGRATIEBESTAND")"
     if [ "$(git -C "$repo" branch --show-current 2>/dev/null)" = "$branch" ] && ja "Je staat al op $branch; verder na handwerk (--verder)?" j; then
@@ -168,13 +178,13 @@ case "$KEUZE" in
     fi ;;
   2)
     kies_migratie; branch_en_titel
-    vraag "Repo's (paden of git-URL's, gescheiden door spaties)" ""
+    vraag "Welke services? (paden of git-URL's, gescheiden door spaties)" ""
     read -r -a repos <<< "$ANTWOORD"
     [ ${#repos[@]} -gt 0 ] || { echo "geen repo's opgegeven" >&2; exit 2; }
     uitvoeren "$ROOT/local.sh" "$MIGRATIEBESTAND" "${repos[@]}" ;;
   3)
     kies_migratie; branch_en_titel
-    vraag "Alleen repo's die matchen (regex, leeg = de hele groep)" ""
+    vraag "Alleen services waarvan de naam matcht (regex, leeg = de hele groep)" ""
     extra=()
     [ -z "$ANTWOORD" ] || extra=(--repo-include "$ANTWOORD")
     echo "Eerst een dry-run: er wordt niets gepusht."
@@ -184,7 +194,7 @@ case "$KEUZE" in
       uitvoeren "$ROOT/run.sh" "$MIGRATIEBESTAND" --go ${extra[@]+"${extra[@]}"}
     fi ;;
   4)
-    vraag "Repo" "$PWD"; repo="$ANTWOORD"
+    vraag "Pad naar de repo" "$PWD"; repo="$ANTWOORD"
     if [[ "$(git -C "$repo" branch --show-current 2>/dev/null)" == migratie/cruft-zet-* ]] \
        && ja "Je staat op een cruft-zet-branch; verder na handwerk (--verder)?" j; then
       uitvoeren "$ROOT/cruft-zet.sh" --verder "$repo"
@@ -198,7 +208,7 @@ case "$KEUZE" in
       uitvoeren "$ROOT/cruft-zet.sh" "$ANTWOORD" "$repo"
     fi ;;
   5)
-    vraag "Lokale repo's (leeg = alle template-services in de GitLab-groep)" ""
+    vraag "Paden naar lokale repo's (leeg = alle template-services in de GitLab-groep)" ""
     read -r -a repos <<< "$ANTWOORD"
     uitvoeren "$ROOT/achterstand.sh" ${repos[@]+"${repos[@]}"} ;;
 esac

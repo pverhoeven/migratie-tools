@@ -68,6 +68,9 @@ if [ ! -s "$uitvoer" ]; then
   echo "geen template-services gevonden"
   exit 0
 fi
+echo "Achterstand = het aantal commits van het template sinds de stand van de service;"
+echo "zoveel stappen krijgt de service bij de volgende cruft update."
+echo
 printf '%-40s %-20s %-11s %s\n' "service" "template-commit" "achterstand" "nieuwste"
 sort -t$'\t' -k3,3nr -k1,1 "$uitvoer" | while IFS=$'\t' read -r s v a n; do
   printf '%-40s %-20s %-11s %s\n' "$s" "$v" "$a" "$n"
