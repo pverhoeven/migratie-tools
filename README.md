@@ -4,25 +4,60 @@ Rolt migraties uit over de services in een GitLab-groep: eerst lokaal op een paa
 services, daarna met multi-gitter over de hele groep, met per service een eigen PR.
 Begrippen staan in [GLOSSARY.md](GLOSSARY.md), besluiten in [docs/adr](docs/adr).
 
-## Structuur
+## Overzicht van de scripts
 
-```
-migratie.sh            menu: kies een actie en een migratie, of maak een nieuwe
-run.sh                 één migratie over een GitLab-groep (standaard dry-run)
-uitproberen.sh         zandbak: verse clones in ./work, zonder GitLab, pusht nooit
-in-repo.sh             lokaal: draait de migratie in een bestaande clone
-cruft-zet.sh           lokaal: zet een template-variabele om in één service (bv. liquibase=true)
-achterstand.sh         per template-service: template-commit en achterstand
-repo-runner.sh         draait één migratie binnen één service
-migraties/<naam>.env   de migraties; <naam> wordt de branch migratie/<naam>
-transformaties/        cruft-update.sh, recept.sh
-recepten/              Maven-module met de OpenRewrite-recepten (YAML en Java)
-controles/             verify.sh
-lib/                   hulpfuncties
-jenkins/               gereedschap.sh: installeert de tools zonder Docker (voor de Jenkinsfile)
-Jenkinsfile            pipeline: één migratie over de groep, of wekelijks de opschoning
-voorbeeld/             een voorbeeld-template met twee services om mee te oefenen
-```
+### Wat je zelf gebruikt
+
+| Script | Waarvoor | Werkt in | Pusht / MR | GitLab nodig |
+|---|---|---|---|---|
+| `migratie.sh` | Menu: kies een actie en een migratie (of maak een nieuwe), bevestig branch en PR-titel; start daarna een van de scripts hieronder | – | via het gekozen script | alleen voor de groep en de achterstand |
+| `in-repo.sh` | Een migratie in je eigen clone draaien, ook om handwerk af te maken; wacht bij een conflict of rode build tot je het hebt opgelost (Enter) | je eigen clone | nee, dat doe je zelf | nee |
+| `uitproberen.sh` | Zandbak: zien wat een migratie doet op een of meer services | verse clones in `work/` | nooit | nee |
+| `run.sh` | Een migratie over de hele GitLab-groep (via multi-gitter); standaard een dry-run, met `--go` echt | tijdelijke clones | met `--go`: per service een MR | ja |
+| `cruft-zet.sh` | Een template-variabele omzetten in één service, bv. `liquibase=true`; wacht bij een conflict | je eigen clone | nee, dat doe je zelf | nee |
+| `achterstand.sh` | Per template-service: op welke stand van het template hij zit en hoeveel template-commits hij achterloopt; wijzigt niets | – | nee | alleen voor de hele groep |
+
+Wanneer welke:
+
+1. Nieuwe migratie: eerst `uitproberen.sh` (of een dry-run van `run.sh`) om te zien wat
+   ze doet; de patches staan per service in `runs/…/debug/`.
+2. Uitrollen: `run.sh --go` op twee of drie services (`--repo-include`), mergen, dan de
+   hele groep.
+3. Handwerk op de werklijst: `in-repo.sh` in je eigen clone van die service.
+4. Een service die een onderdeel van het template erbij wil (of kwijt): `cruft-zet.sh`.
+5. Twijfel waar je staat: `achterstand.sh`.
+
+Of start gewoon `migratie.sh`; dat vraagt het allemaal en toont het commando dat het draait.
+
+### Bouwstenen (worden door de scripts hierboven aangeroepen)
+
+| Bestand | Wat het doet |
+|---|---|
+| `repo-runner.sh` | Draait één migratie in één service: bepaalt of ze van toepassing is, draait de transformaties en de controle en geeft de uitkomst (Gewijzigd, Ongewijzigd, Niet van toepassing, Handwerk nodig) |
+| `transformaties/cruft-update.sh` | De cruft update: bijwerken naar de nieuwste stand van het template, commit voor commit, met echte git-conflicten (ADR 0004) |
+| `transformaties/recept.sh` | Eén OpenRewrite-recept uit `recepten/` draaien via de Maven-plugin |
+| `controles/verify.sh` | Build en tests (`mvn verify`); draait daarna alles terug wat de build wijzigde |
+| `lib/template.sh` | Het template genereren en 3-way mergen; gedeeld door de cruft update en `cruft-zet.sh` |
+| `lib/render-template.py` | Genereert één stand van het template zoals cruft dat doet (gebruikt cruft 2.16.0) |
+| `lib/migratie.sh` | Migratiebestand laden, branch starten, handwerk hervatten en erop wachten, PR-beschrijving |
+| `lib/recepten.sh` | Recept controleren (bestaat, heeft een test) en `recepten/` bouwen en installeren |
+| `lib/gitlab.sh` | GitLab-API: open MR's en de projecten van de groep |
+| `lib/samenvatting.sh` | Het overzicht per uitkomst aan het eind van een run |
+| `lib/opruimen.sh`, `lib/common.sh` | `target/` opruimen; algemene hulpfuncties |
+| `jenkins/gereedschap.sh` | Installeert cruft, multi-gitter en jq zonder Docker (voor de `Jenkinsfile`) |
+| `Jenkinsfile` | Pipeline: `run.sh` in Jenkins, en optioneel wekelijks de opschoning |
+| `voorbeeld/opzetten.sh`, `voorbeeld/wijzig-template.sh` | Het voorbeeld opzetten en het template laten veranderen (zie `voorbeeld/README.md`) |
+
+### Mappen
+
+| Map | Inhoud |
+|---|---|
+| `migraties/` | De migraties, één bestand per migratie (`<naam>.env`); `_voorbeeld.env` is het sjabloon |
+| `recepten/` | Maven-module met de OpenRewrite-recepten (YAML en Java) en hun tests |
+| `runs/` | Per run de resultaten en de debug-uitvoer (niet in git) |
+| `work/` | De clones van `uitproberen.sh` en het voorbeeld (niet in git) |
+| `docs/adr/` | De besluiten; begrippen staan in `GLOSSARY.md` |
+| `voorbeeld/` | Een voorbeeld-template (Spring Boot met Helm-chart) en twee services om mee te oefenen |
 
 Een migratie bestaat uit een cruft update en/of één OpenRewrite-recept, gevolgd
 door de controle `verify` (build en tests). Elke transformatie commit haar eigen
