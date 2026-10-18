@@ -6,6 +6,11 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
+. "$ROOT/lib/migratie.sh"
+. "$ROOT/lib/recepten.sh"
+if [ -f "$ROOT/config.env" ]; then
+  set -a; . "$ROOT/config.env"; set +a
+fi
 
 # --- invoer -----------------------------------------------------------------------
 
@@ -63,9 +68,12 @@ beschrijf() {  # <migratiebestand>: korte omschrijving van wat de migratie doet
   echo "$(echo "${d[*]:-?}" | sed 's/,/ + /g')${alleen:+ (alleen met $alleen)}"
 }
 
-recepten() {  # alle recepten uit recepten/ (YAML-namen en Java-klassen)
-  grep -rhE '^name: ' "$ROOT/recepten/src/main/resources/META-INF/rewrite" 2>/dev/null | sed 's/^name: *//'
-  (cd "$ROOT/recepten/src/main/java" 2>/dev/null && grep -rlE 'extends Recipe\b' . | sed 's|^\./||; s|\.java$||; s|/|.|g')
+recepten() {  # alle recepten uit recepten/ en RECEPTEN_MAP (YAML-namen en Java-klassen)
+  local m
+  while IFS= read -r m; do
+    grep -rhE '^name: ' "$m/src/main/resources/META-INF/rewrite" 2>/dev/null | sed 's/^name: *//'
+    (cd "$m/src/main/java" 2>/dev/null && grep -rlE 'extends Recipe\b' . | sed 's|^\./||; s|\.java$||; s|/|.|g')
+  done < <(recepten_modules "$ROOT")
 }
 
 kebab() { sed -E 's/([a-z0-9])([A-Z])/\1-\2/g' <<< "$1" | tr '[:upper:]' '[:lower:]'; }
@@ -81,7 +89,7 @@ nieuwe_migratie() {  # maakt migraties/<naam>.env aan; het pad komt in MIGRATIEB
     alleen="$ANTWOORD"
   fi
   while IFS= read -r r; do lijst+=("$r"); done < <(recepten | sort)
-  kies "Recept uit recepten/ (OpenRewrite)?" "geen" "${lijst[@]}"
+  kies "Recept (OpenRewrite)?" "geen" "${lijst[@]}"
   [ "$KEUZE" -gt 1 ] && recept="${lijst[$((KEUZE - 2))]}"
   if [ "$cruft" -eq 0 ] && [ -z "$zet" ] && [ -z "$recept" ]; then
     echo "een migratie heeft een cruft update, een variabele en/of een recept nodig" >&2; exit 2
@@ -95,14 +103,15 @@ nieuwe_migratie() {  # maakt migraties/<naam>.env aan; het pad komt in MIGRATIEB
     vraag "Naam van de migratie" "$naam-$(date +%Y-%m-%d)"
     naam="$ANTWOORD"
     if ! [[ "$naam" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then echo "alleen a-z, 0-9, . _ -"
-    elif [ -e "$ROOT/migraties/$naam.env" ]; then echo "migraties/$naam.env bestaat al"
+    elif [ -e "$(migratie_mappen | head -1)/$naam.env" ]; then echo "$naam.env bestaat al"
     else break; fi
   done
   if [ -n "$zet" ]; then titel="feat(cruft): ${zet%%=*}${alleen:+ voor services met $alleen}"
   elif [ "$cruft" -eq 1 ] && [ -n "$recept" ]; then titel="chore(migratie): cruft update en ${recept##*.}"
   elif [ "$cruft" -eq 1 ]; then titel="chore(cruft): bijwerken naar de nieuwste stand van het template"
   else titel="chore(recept): ${recept##*.}"; fi
-  MIGRATIEBESTAND="$ROOT/migraties/$naam.env"
+  # Nieuwe migraties komen in de eerste map: MIGRATIES_MAP als die gezet is.
+  MIGRATIEBESTAND="$(migratie_mappen | head -1)/$naam.env"
   {
     echo "# Aangemaakt met migratie.sh op $(date +%Y-%m-%d)."
     [ -n "$alleen" ] && echo "ALLEEN_MET_DEPENDENCY=$alleen"
@@ -114,13 +123,15 @@ nieuwe_migratie() {  # maakt migraties/<naam>.env aan; het pad komt in MIGRATIEB
 }
 
 kies_migratie() {  # het pad komt in MIGRATIEBESTAND
-  local bestanden=() opties=() f
-  for f in "$ROOT"/migraties/*.env; do
-    [ -e "$f" ] || continue
-    case "$(basename "$f")" in _*) continue ;; esac
-    bestanden+=("$f")
-    opties+=("$(printf '%-34s %s' "$(basename "$f" .env)" "$(beschrijf "$f")")")
-  done
+  local bestanden=() opties=() f map
+  while IFS= read -r map; do
+    for f in "$map"/*.env; do
+      [ -e "$f" ] || continue
+      case "$(basename "$f")" in _*) continue ;; esac
+      bestanden+=("$f")
+      opties+=("$(printf '%-34s %s' "$(basename "$f" .env)" "$(beschrijf "$f")")")
+    done
+  done < <(migratie_mappen)
   NIEUWE_TITEL=""
   kies "Welke migratie?" ${opties[@]+"${opties[@]}"} "nieuwe migratie maken…" "ander migratiebestand (pad opgeven)…"
   if [ "$KEUZE" -le ${#bestanden[@]} ]; then

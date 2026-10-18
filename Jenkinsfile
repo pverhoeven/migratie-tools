@@ -17,6 +17,10 @@
 //     MIGRATIE_CRON                   cron voor de wekelijkse opschoning, bv. 'H 6 * * 1'; leeg: uit
 //     MIGRATIE_GIT_NAAM, MIGRATIE_GIT_EMAIL
 //                                     auteur van de commits in de services
+//     MIGRATIE_EIGEN_REPO             git-URL van een eigen (interne) repo met migraties/ en/of
+//                                     recepten/; die worden naast die van migratie-tools gebruikt
+//     MIGRATIE_EIGEN_BRANCH           branch daarvan (standaard main)
+//     MIGRATIE_EIGEN_CREDENTIALS      id van een credential om die repo te lezen
 //     CONCURRENT, UITSLUITLIJST       zoals in config.env.example
 //     PIP_INDEX_URL, MULTI_GITTER_BASIS, JQ_BASIS
 //                                     downloads via een mirror (bv. Nexus), zie jenkins/gereedschap.sh
@@ -67,6 +71,30 @@ pipeline {
                     // De tools staan buiten de workspace (die wordt na afloop opgeruimd), zodat
                     // ze niet bij elke build opnieuw worden gedownload.
                     env.GEREEDSCHAP = sh(returnStdout: true, script: 'echo "$HOME/.cache/migratie-tools"').trim()
+                }
+            }
+        }
+
+        stage('Eigen migraties en recepten') {
+            when {
+                expression { return env.MIGRATIE_EIGEN_REPO?.trim() as boolean }
+            }
+            steps {
+                script {
+                    def opties = [url: env.MIGRATIE_EIGEN_REPO, branch: env.MIGRATIE_EIGEN_BRANCH ?: 'main']
+                    if (env.MIGRATIE_EIGEN_CREDENTIALS) {
+                        opties.credentialsId = env.MIGRATIE_EIGEN_CREDENTIALS
+                    }
+                    dir('eigen') {
+                        git(opties)
+                    }
+                    if (fileExists('eigen/migraties')) {
+                        env.MIGRATIES_MAP = "${env.WORKSPACE}/eigen/migraties"
+                    }
+                    if (fileExists('eigen/recepten/pom.xml')) {
+                        env.RECEPTEN_MAP = "${env.WORKSPACE}/eigen/recepten"
+                    }
+                    echo "eigen migraties: ${env.MIGRATIES_MAP ?: '-'}, eigen recepten: ${env.RECEPTEN_MAP ?: '-'}"
                 }
             }
         }

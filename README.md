@@ -157,7 +157,7 @@ Beschikbare recepten:
 | `local.migratietools.GedeeldeJarProvided` | voorbeeld van een feature: de dependency `nl.voorbeeld:gedeelde-jar` op `provided` (samen met `CRUFT_ZET='gedeelde_jar=true'`) |
 
 Recepten en migraties van je eigen organisatie (eigen groupId's, interne namen) horen
-niet in deze publieke repo. Zet ze in een interne kopie van migratie-tools.
+niet in deze publieke repo; zie "Eigen migraties en recepten".
 
 Voor een wekelijkse opschoning maak je elke week een migratiebestand, bv.
 `migraties/opschoning-2026-w42.env` met `RECEPT=local.migratietools.WekelijkseOpschoning`.
@@ -165,6 +165,41 @@ Een service waarin niets op te ruimen valt, krijgt geen MR. Grotere of opiniëre
 recepten (Spring Boot-upgrades, AssertJ, `CommonStaticAnalysis`, `AutoFormat`) draai je
 als losse migratie; een Spring Boot-upgrade bij template-services samen met
 `CRUFT_UPDATE=ja` (het template hoogt de parent op, het recept past de code aan).
+
+## Eigen migraties en recepten
+
+Migraties en recepten van je eigen organisatie zet je in een eigen (interne) repo, naast
+migratie-tools, zonder een kopie van de tool te onderhouden:
+
+```
+intern/
+  migraties/<naam>.env   eigen migraties
+  recepten/              eigen Maven-module met recepten (eigen groupId)
+```
+
+In `config.env`:
+
+```bash
+MIGRATIES_MAP=/pad/naar/intern/migraties
+RECEPTEN_MAP=/pad/naar/intern/recepten
+```
+
+Een naam van een migratie wordt dan eerst in `MIGRATIES_MAP` gezocht en daarna in
+`migraties/`; het menu toont beide en zet nieuwe migraties in `MIGRATIES_MAP`. Bij een run
+met een recept worden beide modules gebouwd (mét tests) en krijgt de OpenRewrite-plugin ze
+allebei, zodat een eigen recept ook de ingebouwde kan aanroepen (bv.
+`local.migratietools.WekelijkseOpschoning`). Voor de eigen module:
+
+- gebruik dezelfde `rewrite-recipe-bom` als `recepten/` (de plugin-versie komt uit
+  `recepten/pom.xml`);
+- wil je ingebouwde recepten gebruiken in je tests, neem dan
+  `local.migratietools:recepten:1.0-SNAPSHOT` op als dependency (wordt vóór je eigen
+  module gebouwd en lokaal geïnstalleerd);
+- geef elk recept een test; voor een dependency die niet in Maven Central staat, met een
+  eigen mini-repository in de testresources (zie `GedeeldeJarProvidedTest`).
+
+In Jenkins zet je `MIGRATIE_EIGEN_REPO` (en eventueel `MIGRATIE_EIGEN_BRANCH` en
+`MIGRATIE_EIGEN_CREDENTIALS`); de pipeline checkt die repo uit en stelt beide mappen in.
 
 ## Uitproberen
 
@@ -318,6 +353,8 @@ bv. als *folder properties* op de map van de job of als globale eigenschappen:
 | `MIGRATIE_JDK`, `MIGRATIE_MAVEN` | nee | namen van JDK- en Maven-installaties in Jenkins (*Tools*); leeg: `java` en `mvn` uit het PATH. JDK 21 of nieuwer, want `recepten/` is voor Java 21 gebouwd |
 | `MIGRATIE_CRON` | nee | cron voor de wekelijkse opschoning, bv. `H 6 * * 1`; leeg: uit |
 | `MIGRATIE_GIT_NAAM`, `MIGRATIE_GIT_EMAIL` | nee | auteur van de commits in de services |
+| `MIGRATIE_EIGEN_REPO` | nee | git-URL van een eigen repo met `migraties/` en/of `recepten/` (zie "Eigen migraties en recepten") |
+| `MIGRATIE_EIGEN_BRANCH`, `MIGRATIE_EIGEN_CREDENTIALS` | nee | branch van die repo (standaard `main`) en id van een credential om hem te lezen |
 | `CONCURRENT`, `UITSLUITLIJST` | nee | zoals in `config.env.example` |
 | `PIP_INDEX_URL`, `MULTI_GITTER_BASIS`, `JQ_BASIS` | achter een afgeschermd netwerk | downloads via een mirror (bv. Nexus), zie `jenkins/gereedschap.sh` |
 

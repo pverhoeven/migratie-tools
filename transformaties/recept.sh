@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Transformatie: één recept uit recepten/ draaien via de Maven-plugin en het resultaat
-# committen ("chore(recept): <naam>"). De recepten zijn aan het begin van de run lokaal
-# geïnstalleerd; de plugin-versie staat in recepten/pom.xml.
+# Transformatie: één recept draaien via de Maven-plugin en het resultaat committen
+# ("chore(recept): <naam>"). De recepten (recepten/ en eventueel RECEPTEN_MAP) zijn aan het
+# begin van de run lokaal geïnstalleerd; de plugin-versie staat in recepten/pom.xml.
 #
 # Uit het migratiebestand: RECEPT
 # Optioneel uit config.env: MVN_ARGS (extra Maven-argumenten)
@@ -15,7 +15,7 @@ plugin="$(sed -n 's:.*<rewrite-maven-plugin.version>\(.*\)</rewrite-maven-plugin
 
 args=(-B "org.openrewrite.maven:rewrite-maven-plugin:${plugin}:run"
       "-Drewrite.activeRecipes=${RECEPT}"
-      "-Drewrite.recipeArtifactCoordinates=${RECEPTEN_ARTEFACT}")
+      "-Drewrite.recipeArtifactCoordinates=${RECEPTEN_ARTEFACTEN:-$RECEPTEN_ARTEFACT}")
 
 # shellcheck disable=SC2086
 if ! "$(mvn_cmd)" "${args[@]}" ${MVN_ARGS:-}; then

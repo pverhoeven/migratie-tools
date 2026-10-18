@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Laadt een migratie (wordt gesourced door de scripts in de root). Een migratie
-# geef je op als pad naar een migratiebestand of als naam uit migraties/.
+# geef je op als pad naar een migratiebestand of als naam; een naam wordt eerst gezocht in
+# MIGRATIES_MAP (eigen migraties, bv. uit een interne repo) en dan in migraties/.
 #
 # Een migratiebestand migraties/<naam>.env bevat (minstens één transformatie; zie
 # migraties/_voorbeeld.env voor uitleg per regel):
@@ -14,17 +15,28 @@
 # staan in het bestand, zodat herhaalde runs dezelfde branch gebruiken.
 # De naam van het bestand is de naam van de migratie en van de branch.
 
-laad_migratie() {  # <naam of pad>
-  local bestand="$1" root
+# De mappen met migraties, één per regel: eerst MIGRATIES_MAP, dan migraties/.
+migratie_mappen() {
+  local root
   root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-  if [ ! -f "$bestand" ] && [ -f "$root/migraties/${1%.env}.env" ]; then
-    bestand="$root/migraties/${1%.env}.env"
+  if [ -n "${MIGRATIES_MAP:-}" ]; then echo "$MIGRATIES_MAP"; fi
+  echo "$root/migraties"
+}
+
+laad_migratie() {  # <naam of pad>
+  local bestand="$1" map
+  if [ ! -f "$bestand" ]; then
+    while IFS= read -r map; do
+      if [ -f "$map/${1%.env}.env" ]; then bestand="$map/${1%.env}.env"; break; fi
+    done < <(migratie_mappen)
   fi
   if [ ! -f "$bestand" ]; then
     echo "migratie niet gevonden: $1" >&2
-    echo "geef een pad naar een migratiebestand, of een naam uit migraties/:" >&2
-    find "$root/migraties" -name '*.env' ! -name '_*' -exec basename {} .env \; | sort | sed 's/^/  /' >&2
-    echo "  (de voorbeeldmigraties staan in voorbeeld/, bv. $root/voorbeeld/cruft-update.env)" >&2
+    echo "geef een pad naar een migratiebestand, of een naam uit $(migratie_mappen | paste -sd, - | sed 's/,/ of /g'):" >&2
+    while IFS= read -r map; do
+      find "$map" -maxdepth 1 -name '*.env' ! -name '_*' -exec basename {} .env \; 2>/dev/null
+    done < <(migratie_mappen) | sort | sed 's/^/  /' >&2
+    echo "  (de voorbeeldmigraties staan in voorbeeld/, bv. voorbeeld/cruft-update.env)" >&2
     exit 2
   fi
 
