@@ -1,21 +1,32 @@
 // Jenkins-pipeline voor migratie-tools: één migratie over de GitLab-groep via run.sh.
 // Draait zonder Docker op een Linux-agent; de tools komen uit jenkins/gereedschap.sh.
 //
-// Nodig in Jenkins (namen hieronder aanpassen aan jullie installatie):
-//   - een agent met label 'linux' met bash, git, curl, tar, python3 (+ venv), Java en Maven
-//   - credential 'gitlab-migratie-token' (Secret text): GitLab-token met api-rechten op de groep
-//   - credential 'template-repo-lezen' (Username with password): leesrechten op de
-//     template-repo, voor git via HTTPS (Git-plugin, binding gitUsernamePassword).
-//     Gebruikt de template-repo SSH, vervang die binding dan door sshagent(['…']).
-//   - Maven-instellingen (Nexus-mirror) zoals jullie andere Maven-builds die krijgen; de
-//     builds van de services gebruiken de settings.xml en ~/.m2 van de agent.
+// Deze Jenkinsfile bevat geen instellingen van een organisatie: alles komt uit
+// omgevingsvariabelen die je in Jenkins zelf zet (bv. als folder properties op de map
+// van de job, of als globale eigenschappen). Zie "Jenkins" in de README.
+//
+//   Verplicht
+//     GITLAB_GROUP                    GitLab-groep met de services
+//     GITLAB_BASE_URL                 URL van GitLab (leeg: gitlab.com)
+//     MIGRATIE_GITLAB_CREDENTIALS     id van een Secret text-credential: GitLab-token met api-rechten
+//   Optioneel
+//     MIGRATIE_TEMPLATE_CREDENTIALS   id van een Username with password-credential met leesrechten
+//                                     op de template-repo (git via HTTPS)
+//     MIGRATIE_JDK, MIGRATIE_MAVEN    namen van JDK- en Maven-installaties in Jenkins (Tools);
+//                                     leeg: java en mvn uit het PATH van de agent. JDK 21 of nieuwer.
+//     MIGRATIE_CRON                   cron voor de wekelijkse opschoning, bv. 'H 6 * * 1'; leeg: uit
+//     MIGRATIE_GIT_NAAM, MIGRATIE_GIT_EMAIL
+//                                     auteur van de commits in de services
+//     CONCURRENT, UITSLUITLIJST       zoals in config.env.example
+//     PIP_INDEX_URL, MULTI_GITTER_BASIS, JQ_BASIS
+//                                     downloads via een mirror (bv. Nexus), zie jenkins/gereedschap.sh
 //
 // Handmatig starten: vul MIGRATIE in (naam uit migraties/ of pad), standaard een dry-run.
-// Wekelijkse opschoning: zet de cron-trigger aan; een geplande build maakt dan zelf
-// migraties/opschoning-<jaar>-w<week>.env aan en draait die met --go.
+// Een geplande build (MIGRATIE_CRON) maakt zelf migraties/opschoning-<jaar>-w<week>.env aan
+// en draait die met --go.
 
 pipeline {
-    agent { label 'linux' }
+    agent any
 
     options {
         disableConcurrentBuilds()      // twee runs tegelijk zien elkaars open MR's niet goed
@@ -35,34 +46,34 @@ pipeline {
                      description: 'Build en tests van de services overslaan (alleen bij een dry-run)')
     }
 
-    // triggers { cron('H 6 * * 1') }   // wekelijkse opschoning op maandagochtend
-
-    // Gebruiken jullie Jenkins' eigen JDK- en Maven-installaties, zet dan de namen uit
-    // Global Tool Configuration hier neer; anders komen java en mvn uit het PATH van de agent.
-    // tools { jdk 'jdk-21'; maven 'maven-3.9' }
+    triggers {
+        cron(env.MIGRATIE_CRON ?: '')
+    }
 
     environment {
-        GITLAB_GROUP    = 'mijn-groep'
-        GITLAB_BASE_URL = 'https://gitlab.example.com'
-        CONCURRENT      = '4'
-        // UITSLUITLIJST = 'gedeelde-lib infra-config'
-
-        // Achter een afgeschermd netwerk: de downloads van gereedschap.sh via Nexus.
-        // PIP_INDEX_URL      = 'https://nexus.example.com/repository/pypi-proxy/simple'
-        // MULTI_GITTER_BASIS = 'https://nexus.example.com/repository/github/lindell/multi-gitter/releases/download'
-        // JQ_BASIS           = 'https://nexus.example.com/repository/github/jqlang/jq/releases/download'
-
-        // Auteur van de commits in de services.
-        GIT_AUTHOR_NAME     = 'migratie-tools'
-        GIT_AUTHOR_EMAIL    = 'migratie-tools@example.com'
-        GIT_COMMITTER_NAME  = 'migratie-tools'
-        GIT_COMMITTER_EMAIL = 'migratie-tools@example.com'
+        LANG = 'C.UTF-8'   // de uitvoer bevat ë, → en ─
     }
 
     stages {
+        stage('Instellingen') {
+            steps {
+                script {
+                    def ontbreekt = []
+                    if (!env.GITLAB_GROUP) { ontbreekt << 'GITLAB_GROUP' }
+                    if (!env.MIGRATIE_GITLAB_CREDENTIALS) { ontbreekt << 'MIGRATIE_GITLAB_CREDENTIALS' }
+                    if (ontbreekt) {
+                        error("Zet in Jenkins (bv. als folder property): ${ontbreekt.join(', ')}. Zie de Jenkinsfile en de README.")
+                    }
+                    // De tools staan buiten de workspace (die wordt na afloop opgeruimd), zodat
+                    // ze niet bij elke build opnieuw worden gedownload.
+                    env.GEREEDSCHAP = sh(returnStdout: true, script: 'echo "$HOME/.cache/migratie-tools"').trim()
+                }
+            }
+        }
+
         stage('Gereedschap') {
             steps {
-                sh 'jenkins/gereedschap.sh .tools'
+                sh 'jenkins/gereedschap.sh "$GEREEDSCHAP"'
             }
         }
 
@@ -92,19 +103,41 @@ pipeline {
 
         stage('Migratie') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'gitlab-migratie-token', variable: 'GITLAB_TOKEN'),
-                    gitUsernamePassword(credentialsId: 'template-repo-lezen', gitToolName: 'Default')
-                ]) {
-                    sh '''
-                        export PATH="$PWD/.tools/bin:$PWD/.tools/venv/bin:$PATH"
-                        export CRUFT_PYTHON="$PWD/.tools/venv/bin/python"
-                        rm -rf runs
-                        set -- "$MIGRATIE_NAAM" $GO_VLAG
-                        [ -z "$REPO_INCLUDE" ] || set -- "$@" --repo-include "$REPO_INCLUDE"
-                        [ "$ZONDER_VERIFY" != true ] || set -- "$@" --zonder-verify
-                        ./run.sh "$@"
-                    '''
+                script {
+                    def credentials = [string(credentialsId: env.MIGRATIE_GITLAB_CREDENTIALS, variable: 'GITLAB_TOKEN')]
+                    if (env.MIGRATIE_TEMPLATE_CREDENTIALS) {
+                        credentials << gitUsernamePassword(credentialsId: env.MIGRATIE_TEMPLATE_CREDENTIALS, gitToolName: 'Default')
+                    }
+
+                    def pad = ["${env.GEREEDSCHAP}/bin", "${env.GEREEDSCHAP}/venv/bin"]
+                    def omgeving = ["CRUFT_PYTHON=${env.GEREEDSCHAP}/venv/bin/python"]
+                    if (env.MIGRATIE_JDK) {
+                        def jdk = tool(name: env.MIGRATIE_JDK, type: 'jdk')
+                        pad << "${jdk}/bin"
+                        omgeving << "JAVA_HOME=${jdk}"
+                    }
+                    if (env.MIGRATIE_MAVEN) {
+                        pad << "${tool(name: env.MIGRATIE_MAVEN, type: 'maven')}/bin"
+                    }
+                    omgeving << "PATH+MIGRATIE=${pad.join(':')}"
+
+                    def naam = env.MIGRATIE_GIT_NAAM ?: 'migratie-tools'
+                    def email = env.MIGRATIE_GIT_EMAIL ?: 'migratie-tools@localhost'
+                    omgeving += ["GIT_AUTHOR_NAME=${naam}", "GIT_COMMITTER_NAME=${naam}",
+                                 "GIT_AUTHOR_EMAIL=${email}", "GIT_COMMITTER_EMAIL=${email}"]
+
+                    withCredentials(credentials) {
+                        withEnv(omgeving) {
+                            sh '''
+                                rm -rf runs
+                                set -- "$MIGRATIE_NAAM" $GO_VLAG
+                                [ -z "$REPO_INCLUDE" ] || set -- "$@" --repo-include "$REPO_INCLUDE"
+                                [ "$ZONDER_VERIFY" != true ] || set -- "$@" --zonder-verify
+                                java -version 2>&1 | head -1
+                                ./run.sh "$@"
+                            '''
+                        }
+                    }
                 }
             }
         }
@@ -131,6 +164,17 @@ pipeline {
                     unstable("Handwerk nodig bij ${handwerk} service(s); zie runs/*/resultaten.tsv in de artefacten")
                 }
             }
+        }
+        unstable {
+            // Plek voor een eigen melding, bv. naar een chatkanaal met de werklijst.
+            echo 'Er is handwerk nodig; de werklijst staat in de artefacten (runs/*/resultaten.tsv).'
+        }
+        failure {
+            // Plek voor een eigen melding bij een mislukte run.
+            echo 'De run is mislukt; zie de console-uitvoer.'
+        }
+        cleanup {
+            deleteDir()   // de tools staan buiten de workspace en blijven bewaard
         }
     }
 }

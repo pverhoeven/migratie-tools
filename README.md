@@ -279,22 +279,38 @@ template-migratie start: services die ver achterlopen krijgen meer kans op confl
 
 ## Jenkins
 
-De `Jenkinsfile` draait `run.sh` op een Linux-agent, zonder Docker. De tools (cruft
-2.16.0, multi-gitter, jq) installeert `jenkins/gereedschap.sh` in `.tools/` van de
-workspace, met vaste versies en gecontroleerde downloads; de tweede keer wordt er niets
-meer gedownload. Achter een afgeschermd netwerk komen de downloads via Nexus
-(`PIP_INDEX_URL`, `MULTI_GITTER_BASIS`, `JQ_BASIS` in de `environment` van de
-Jenkinsfile). De agent heeft nodig: bash, git, curl, tar, python3 met venv, Java en
-Maven (met de Nexus-instellingen van jullie andere Maven-builds).
+De `Jenkinsfile` draait `run.sh` op een Linux-agent (`agent any`), zonder Docker. De
+tools (cruft 2.16.0, multi-gitter, jq) installeert `jenkins/gereedschap.sh` in
+`~/.cache/migratie-tools` op de agent, met vaste versies en gecontroleerde downloads;
+daarna wordt er niets meer gedownload. De workspace wordt na elke build opgeruimd.
+
+De `Jenkinsfile` bevat geen instellingen van een organisatie. Die zet je in Jenkins zelf,
+bv. als *folder properties* op de map van de job of als globale eigenschappen:
+
+| Variabele | Verplicht | Wat |
+|---|---|---|
+| `GITLAB_GROUP` | ja | GitLab-groep met de services |
+| `GITLAB_BASE_URL` | bij self-hosted GitLab | URL van GitLab |
+| `MIGRATIE_GITLAB_CREDENTIALS` | ja | id van een *Secret text*-credential: GitLab-token met api-rechten op de groep |
+| `MIGRATIE_TEMPLATE_CREDENTIALS` | als de template-repo niet zonder inloggen te lezen is | id van een *Username with password*-credential met leesrechten op de template-repo (git via HTTPS) |
+| `MIGRATIE_JDK`, `MIGRATIE_MAVEN` | nee | namen van JDK- en Maven-installaties in Jenkins (*Tools*); leeg: `java` en `mvn` uit het PATH. JDK 21 of nieuwer, want `recepten/` is voor Java 21 gebouwd |
+| `MIGRATIE_CRON` | nee | cron voor de wekelijkse opschoning, bv. `H 6 * * 1`; leeg: uit |
+| `MIGRATIE_GIT_NAAM`, `MIGRATIE_GIT_EMAIL` | nee | auteur van de commits in de services |
+| `CONCURRENT`, `UITSLUITLIJST` | nee | zoals in `config.env.example` |
+| `PIP_INDEX_URL`, `MULTI_GITTER_BASIS`, `JQ_BASIS` | achter een afgeschermd netwerk | downloads via een mirror (bv. Nexus), zie `jenkins/gereedschap.sh` |
+
+Ontbreekt er iets verplichts, dan stopt de eerste stap met een lijst van wat er moet
+worden ingesteld. De agent heeft verder nodig: bash, git, curl, tar en python3 met venv
+(Debian/Ubuntu: `python3-venv`); de Maven-instellingen (bv. een Nexus-mirror) komen van
+de agent, net als bij jullie andere Maven-builds.
 
 Parameters: `MIGRATIE` (naam of pad), `GO` (uit = dry-run), `REPO_INCLUDE` en
-`ZONDER_VERIFY`. Aan te passen bovenin de Jenkinsfile: het agent-label, de GitLab-groep
-en -URL, de credential-id's (GitLab-token, leesrechten op de template-repo) en de auteur
-van de commits. De artefacten van een build zijn `runs/**`: resultaten.tsv en per
+`ZONDER_VERIFY`. De artefacten van een build zijn `runs/**`: resultaten.tsv en per
 service de patches en de uitvoer. Is er handwerk nodig, dan wordt de build *unstable*;
-de beschrijving van de build telt de uitkomsten.
+de beschrijving van de build telt de uitkomsten. Bij *unstable* en *failure* is er een
+plek voor een eigen melding (bv. naar een chatkanaal).
 
-Met de cron-trigger aan (staat uit) maakt een geplande build zelf
+Met `MIGRATIE_CRON` gezet maakt een geplande build zelf
 `migraties/opschoning-<jaar>-w<week>.env` aan en draait die met `--go`.
 
 ## Tips
