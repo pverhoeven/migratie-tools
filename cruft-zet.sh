@@ -54,6 +54,8 @@ afronden() {
   git log --oneline "$basis..HEAD"
   echo "--- push en open de MR zelf (labels: migratie, cruft-zet):"
   echo "    git push -u origin $branch"
+  echo "--- titel: $(git log -1 --format=%s "$(git rev-list --max-count=1 --grep='^feat(cruft): ' HEAD)")"
+  echo "--- beschrijving: template-variabele omgezet met cruft-zet.sh (migratie-tools $(tools_versie "$ROOT"))."
 }
 
 if [ "$verder" -eq 1 ]; then

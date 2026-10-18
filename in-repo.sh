@@ -60,7 +60,10 @@ case "$status" in
     echo "--- commits op $branch:"
     git log --oneline "$basis..HEAD"
     echo "--- push en open de MR zelf (labels: migratie, $MIGRATIE):"
-    echo "    git push -u origin $branch" ;;
+    echo "    git push -u origin $branch"
+    echo "--- titel: chore(migratie): $MIGRATIE"
+    echo "--- beschrijving:"
+    pr_beschrijving "$ROOT" | sed 's/^/    /' ;;
   20)
     if [ -n "$(git ls-files -u)" ]; then
       echo "--- los de conflicten op (bv. in IntelliJ: Git > Resolve Conflicts) en draai daarna:"

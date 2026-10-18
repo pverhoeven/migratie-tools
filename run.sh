@@ -45,23 +45,15 @@ while [ $# -gt 0 ]; do
 done
 export ZONDER_VERIFY
 
-# Een echte run is vastgepind op een commit van deze repo (docs/adr/0002).
-versie="$(git -C "$ROOT" rev-parse --short HEAD)"
-if [ -n "$(git -C "$ROOT" status --porcelain)" ]; then
-  if [ "$go" -eq 1 ]; then
-    echo "--go vereist een schone werkmap in migratie-tools: commit eerst je wijzigingen" >&2
-    exit 2
-  fi
-  versie="$versie (met lokale wijzigingen)"
+# De PR legt vast wat er is uitgerold: de inhoud van het migratiebestand en de commit
+# van migratie-tools (docs/adr/0002). Niet-gecommitte receptcode staat daar niet in.
+if [ "$go" -eq 1 ] && [ -n "${RECEPT:-}" ] && [ -n "$(git -C "$ROOT" status --porcelain -- recepten)" ]; then
+  echo "let op: recepten/ heeft lokale wijzigingen; de PR noemt het recept, maar niet die code" >&2
 fi
 if [ "$go" -eq 1 ] && [ "$ZONDER_VERIFY" = "1" ]; then
   echo "--zonder-verify mag alleen bij een dry-run" >&2
   exit 2
 fi
-
-transformaties=""
-[ -n "${CRUFT_UPDATE:-}" ] && transformaties+="- cruft update naar de nieuwste stand van het template (één commit per template-commit)"$'\n'
-[ -n "${RECEPT:-}" ] && transformaties+="- recept \`$RECEPT\`"$'\n'
 
 args=(run "$ROOT/repo-runner.sh"
   --platform gitlab
@@ -69,10 +61,7 @@ args=(run "$ROOT/repo-runner.sh"
   --branch "migratie/$MIGRATIE"
   --manual-commit
   --pr-title "chore(migratie): $MIGRATIE"
-  --pr-body "Automatisch aangemaakt door migratie-tools, migratie \`$MIGRATIE\` (migratie-tools $versie).
-
-${transformaties}
-Elke transformatie is een eigen commit. Controleer de diff en merge."
+  --pr-body "$(pr_beschrijving "$ROOT")"
   --labels "migratie,$MIGRATIE"
   --conflict-strategy skip
   --concurrent "${CONCURRENT:-4}")

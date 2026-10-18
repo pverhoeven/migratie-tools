@@ -56,9 +56,11 @@ CRUFT_UPDATE=ja                                  # naar de nieuwste stand van he
 RECEPT=local.migratietools.SpringBoot35          # en/of één recept uit recepten/
 ```
 
-Commit het bestand: een echte run draait alleen vanaf een schone werkmap en zet de
-commit van migratie-tools in de PR. Geef de migratie een naam die past bij wat er
-gebeurt, bv. `template-2026-10` of `spring-boot-3.5`.
+De PR-beschrijving bevat de inhoud van het migratiebestand en de commit van
+migratie-tools, dus de PR legt zelf vast wat er is uitgerold; committen hoeft niet.
+Commit het bestand wel als de migratie later (door iemand anders) herhaald wordt. Geef de
+migratie een naam die past bij wat er gebeurt, bv. `cruft-update-2026-10` of
+`spring-boot-3.5`.
 
 ## Recepten
 

@@ -5,8 +5,8 @@
 # Een migratiebestand migraties/<naam>.env bevat (minstens één transformatie):
 #   CRUFT_UPDATE=ja     cruft update: de template-service bijwerken naar de nieuwste
 #                       stand van het template (de commits leggen vast welke)
-#   RECEPT              naam van één OpenRewrite-recept uit recepten/; vastgepind door
-#                       de commit van migratie-tools (docs/adr/0002)
+#   RECEPT              naam van één OpenRewrite-recept uit recepten/
+# De PR-beschrijving bevat de inhoud van dit bestand (docs/adr/0002).
 # De naam van het bestand is de naam van de migratie en van de branch.
 
 laad_migratie() {  # <naam of pad>
@@ -24,6 +24,7 @@ laad_migratie() {  # <naam of pad>
   fi
 
   MIGRATIE="$(basename "$bestand" .env)"
+  MIGRATIE_BESTAND="$bestand"
   if ! [[ "$MIGRATIE" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then
     echo "ongeldige migratienaam '$MIGRATIE' (alleen a-z, 0-9, . _ -)" >&2; exit 2
   fi
@@ -104,4 +105,24 @@ start_branch() {  # <branch>
   echo "branch $branch vanaf ${huidige:-HEAD} ($(git rev-parse --short HEAD))"
   git config "branch.$branch.migratiebasis" "$(git rev-parse HEAD)"
   git switch -q -c "$branch"
+}
+
+# De commit van migratie-tools, met "(met lokale wijzigingen)" als de werkmap niet schoon is.
+tools_versie() {  # <root>
+  local v
+  v="$(git -C "$1" rev-parse --short HEAD)"
+  [ -z "$(git -C "$1" status --porcelain)" ] || v="$v (met lokale wijzigingen)"
+  echo "$v"
+}
+
+# PR-beschrijving voor de geladen migratie: wat er gebeurt en de inhoud van het
+# migratiebestand, zodat de PR zelf vastlegt wat er is uitgerold (docs/adr/0002).
+pr_beschrijving() {  # <root>
+  local inhoud
+  inhoud="$(grep -vE '^[[:space:]]*(#|$)' "$MIGRATIE_BESTAND" || true)"
+  printf 'Automatisch aangemaakt door migratie-tools, migratie `%s` (migratie-tools %s).\n\n' "$MIGRATIE" "$(tools_versie "$1")"
+  [ -z "${CRUFT_UPDATE:-}" ] || printf -- '- cruft update naar de nieuwste stand van het template (één commit per template-commit)\n'
+  [ -z "${RECEPT:-}" ] || printf -- '- recept `%s`\n' "$RECEPT"
+  printf '\nMigratiebestand `%s.env`:\n\n```\n%s\n```\n\n' "$MIGRATIE" "$inhoud"
+  printf 'Elke transformatie is een eigen commit. Controleer de diff en merge.\n'
 }

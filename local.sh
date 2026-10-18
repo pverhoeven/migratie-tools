@@ -81,6 +81,9 @@ for repo in "$@"; do
     if [ "$verder" -eq 1 ]; then
       echo "--- klaar; push en open de MR zelf (labels: migratie, $MIGRATIE):"
       echo "    git -C $dest push -u origin migratie/$MIGRATIE"
+      echo "--- titel: chore(migratie): $MIGRATIE"
+      echo "--- beschrijving:"
+      pr_beschrijving "$ROOT" | sed 's/^/    /'
     fi
   else
     echo "--- de stand staat in $dest; los het op (conflicten: git status) en draai daarna:"
