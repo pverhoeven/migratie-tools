@@ -51,7 +51,9 @@ nieuwe_run() {  # <root> <migratie>
   mkdir -p "$map"
   RESULTATEN="$map/resultaten.tsv"
   : > "$RESULTATEN"
-  export RESULTATEN
+  # Per service de patches, de stand bij handwerk en de uitvoer (zie repo-runner.sh).
+  DEBUG_MAP="$map/debug"
+  export RESULTATEN DEBUG_MAP
 }
 
 # Regex die eindigt op één van de gegeven repo-namen of -paden (voor --repo-exclude).

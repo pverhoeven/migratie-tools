@@ -5,6 +5,9 @@
 #
 # Optioneel: ZONDER_VERIFY=1 slaat de controle over (alleen bij een dry-run).
 #            RESULTATEN=<bestand>: hier komt één regel met de uitkomst bij.
+#            DEBUG_MAP=<map>: schrijf per service naar <map>/<service>/ de uitvoer
+#            (uitvoer.log), de commits als patch (wijzigingen.patch) en bij handwerk
+#            de stand waarin de migratie stopte (onafgemaakt.diff, status.txt).
 #            BASIS=<commit>: vergelijk hiermee voor Gewijzigd/Ongewijzigd (local.sh
 #            --verder: het begin van de branch); standaard de commit bij de start.
 #
@@ -22,7 +25,25 @@ REDEN_BESTAND="$(mktemp)"
 export REDEN_BESTAND
 trap 'rm -f "$REDEN_BESTAND"' EXIT
 
+if [ -n "${DEBUG_MAP:-}" ]; then
+  DEBUG="$DEBUG_MAP/$SERVICE"
+  mkdir -p "$DEBUG"
+  exec > >(tee "$DEBUG/uitvoer.log") 2>&1
+fi
+
+schrijf_debug() {
+  [ -n "${DEBUG:-}" ] && [ -n "${start:-}" ] || return 0
+  if [ "$(git rev-parse HEAD)" != "$start" ]; then
+    git format-patch -q --stdout "$start..HEAD" > "$DEBUG/wijzigingen.patch"
+  fi
+  if [ -n "$(git status --porcelain)" ]; then
+    git status --short > "$DEBUG/status.txt"
+    git diff HEAD > "$DEBUG/onafgemaakt.diff" || true
+  fi
+}
+
 uitkomst() {  # <exit-code> <uitkomst> [reden]
+  schrijf_debug
   if [ -n "${RESULTATEN:-}" ]; then
     printf '%s\t%s\t%s\n' "$SERVICE" "$2" "${3:-}" >> "$RESULTATEN"
   fi

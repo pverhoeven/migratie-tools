@@ -217,6 +217,16 @@ met een open MR van een *andere* migratie (herkend aan het label met de naam van
 Elke run schrijft `runs/<migratie>-<tijd>/resultaten.tsv` en toont aan het eind de
 uitkomst per service, met de werklijst (Handwerk nodig) bovenaan.
 
+Om een (dry-)run na te kijken staat per service in `runs/<migratie>-<tijd>/debug/<service>/`:
+
+| Bestand | Inhoud |
+|---|---|
+| `wijzigingen.patch` | de commits van de migratie, met boodschap (`git format-patch`; toe te passen met `git am`) |
+| `onafgemaakt.diff`, `status.txt` | bij Handwerk nodig: de stand waarin de migratie stopte, met de conflictmarkers |
+| `uitvoer.log` | de volledige uitvoer van de migratie voor die service (multi-gitter toont die niet) |
+
+Dat geldt voor `run.sh` (ook de dry-run) en `local.sh`.
+
 ## Achterstand
 
 ```bash
