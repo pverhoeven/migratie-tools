@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Interactief menu voor migratie-tools: kies wat je wilt doen en welke migratie (of maak
 # er een), bevestig de branch en de PR-titel, en het menu start het bijbehorende script.
-# De losse scripts (in-repo.sh, local.sh, run.sh, cruft-zet.sh, achterstand.sh) blijven
+# De losse scripts (in-repo.sh, uitproberen.sh, run.sh, cruft-zet.sh, achterstand.sh) blijven
 # gewoon bruikbaar; het menu toont aan het eind het commando dat het uitvoert.
 set -euo pipefail
 
@@ -153,9 +153,9 @@ kies "Wat wil je doen?" \
   "Migratie in een repo draaien (in-repo.sh)
        In je eigen clone, bv. het project dat je in IntelliJ open hebt. Maakt een
        branch en commits; pushen en de MR openen doe je zelf." \
-  "Migratie proberen op verse clones (local.sh)
-       Kloont services naar work/ en draait de migratie daar. Er wordt niets
-       gepusht; om te zien wat een migratie doet." \
+  "Migratie uitproberen op verse clones (uitproberen.sh)
+       Zandbak: kloont services naar work/ en draait de migratie daar. Werkt
+       zonder GitLab en pusht nooit; om te zien wat een migratie doet." \
   "Migratie over de hele GitLab-groep (run.sh)
        Draait de migratie op alle services en maakt per service een MR. Eerst
        een dry-run, daarna vraagt het menu of het echt moet." \
@@ -181,7 +181,7 @@ case "$KEUZE" in
     vraag "Welke services? (paden of git-URL's, gescheiden door spaties)" ""
     read -r -a repos <<< "$ANTWOORD"
     [ ${#repos[@]} -gt 0 ] || { echo "geen repo's opgegeven" >&2; exit 2; }
-    uitvoeren "$ROOT/local.sh" "$MIGRATIEBESTAND" "${repos[@]}" ;;
+    uitvoeren "$ROOT/uitproberen.sh" "$MIGRATIEBESTAND" "${repos[@]}" ;;
   3)
     kies_migratie; branch_en_titel
     vraag "Alleen services waarvan de naam matcht (regex, leeg = de hele groep)" ""

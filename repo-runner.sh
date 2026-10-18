@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Draait één migratie binnen één gekloonde service (cwd = repo). Wordt gebruikt door
-# zowel run.sh (via multi-gitter) als local.sh; de waarden uit het migratiebestand
+# run.sh (via multi-gitter), uitproberen.sh en in-repo.sh; de waarden uit het migratiebestand
 # staan in de environment. Elke transformatie commit zijn eigen wijzigingen.
 #
 # Optioneel: ZONDER_VERIFY=1 slaat de controle over (alleen bij een dry-run).
@@ -8,8 +8,8 @@
 #            DEBUG_MAP=<map>: schrijf per service naar <map>/<service>/ de uitvoer
 #            (uitvoer.log), de commits als patch (wijzigingen.patch) en bij handwerk
 #            de stand waarin de migratie stopte (onafgemaakt.diff, status.txt).
-#            BASIS=<commit>: vergelijk hiermee voor Gewijzigd/Ongewijzigd (local.sh
-#            --verder: het begin van de branch); standaard de commit bij de start.
+#            BASIS=<commit>: vergelijk hiermee voor Gewijzigd/Ongewijzigd (in-repo.sh:
+#            het begin van de branch); standaard de commit bij de start.
 #
 # Exit-codes (multi-gitter maakt alleen bij 0 een PR, en alleen als er commits zijn):
 #   0  Gewijzigd of Ongewijzigd

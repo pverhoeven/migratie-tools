@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# De module recepten/ (wordt gesourced door run.sh en local.sh).
+# De module recepten/ (wordt gesourced door run.sh, uitproberen.sh en in-repo.sh).
 
 RECEPTEN_ARTEFACT="local.migratietools:recepten:1.0-SNAPSHOT"
 

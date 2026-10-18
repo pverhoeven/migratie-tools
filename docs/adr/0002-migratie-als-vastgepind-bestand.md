@@ -7,8 +7,8 @@ zodat elke run van de migratie dezelfde branch gebruikt. Open MR's van een migra
 herkennen we aan dat label, niet aan de branchnaam. Zo hoort een PR bij één concrete
 migratie in plaats van bij een combinatie van stapnamen. Een herhaalde run slaat
 services over die al een branch voor die migratie hebben (in plaats van die te
-vervangen), omdat handwerk bij "Handwerk nodig" juist op die branch gebeurt: lokaal via
-`local.sh`, er komt dan geen automatische PR. Opnieuw genereren betekent eerst de branch
+vervangen), omdat handwerk bij "Handwerk nodig" juist op die branch gebeurt: in de eigen clone via
+`in-repo.sh`, er komt dan geen automatische PR. Opnieuw genereren betekent eerst de branch
 verwijderen.
 
 Wat er is uitgerold, legt de PR zelf vast: de beschrijving bevat de inhoud van het

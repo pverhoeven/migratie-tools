@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Laadt een migratie (wordt gesourced door run.sh, local.sh en in-repo.sh). Een migratie
+# Laadt een migratie (wordt gesourced door de scripts in de root). Een migratie
 # geef je op als pad naar een migratiebestand of als naam uit migraties/.
 #
 # Een migratiebestand migraties/<naam>.env bevat (minstens één transformatie):
@@ -55,7 +55,7 @@ laad_migratie() {  # <naam of pad>
 }
 
 # Commit het handwerk (opgeloste conflicten of een gerepareerde build) in de repo <dir>,
-# zodat de migratie verder kan. Gebruikt door local.sh en in-repo.sh met --verder.
+# zodat de migratie verder kan. Gebruikt door in-repo.sh en cruft-zet.sh (--verder en wachten).
 hervat() {  # <dir>
   local dest="$1" bericht msg
   if ! git -C "$dest" rev-parse --git-dir >/dev/null 2>&1; then

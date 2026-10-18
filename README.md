@@ -9,7 +9,7 @@ Begrippen staan in [GLOSSARY.md](GLOSSARY.md), besluiten in [docs/adr](docs/adr)
 ```
 migratie.sh            menu: kies een actie en een migratie, of maak een nieuwe
 run.sh                 één migratie over een GitLab-groep (standaard dry-run)
-local.sh               lokaal: kloont services naar ./work en draait de migratie
+uitproberen.sh         zandbak: verse clones in ./work, zonder GitLab, pusht nooit
 in-repo.sh             lokaal: draait de migratie in een bestaande clone
 cruft-zet.sh           lokaal: zet een template-variabele om in één service (bv. liquibase=true)
 achterstand.sh         per template-service: template-commit en achterstand
@@ -107,16 +107,19 @@ recepten (Spring Boot-upgrades, AssertJ, `CommonStaticAnalysis`, `AutoFormat`) d
 als losse migratie; een Spring Boot-upgrade bij template-services samen met
 `CRUFT_UPDATE=ja` (het template hoogt de parent op, het recept past de code aan).
 
-## Lokaal draaien
+## Uitproberen
 
 ```bash
-./local.sh migraties/template-2026-10.env ~/code/service-a ~/code/service-b
+./uitproberen.sh cruft-update-2026-10 ~/code/service-a ~/code/service-b
 git -C work/service-a log -p origin/HEAD..HEAD
 ```
 
-`local.sh` werkt op een verse clone in `./work/<naam>` op de branch
-`migratie/<naam>` en pusht nooit. Niet-gecommitte wijzigingen in je eigen repo worden
-niet meegenomen. Met `--zonder-verify` (vóór het migratiebestand) sla je de build over.
+`uitproberen.sh` is een zandbak: het kloont elke service vers naar `./work/<naam>`,
+draait de migratie op de branch van de migratie en pusht nooit. Het werkt zonder
+GitLab (lokale paden of git-URL's), dus ook voordat je een token hebt. `work/` wordt bij
+elke run opnieuw gekloond. Niet-gecommitte wijzigingen in je eigen repo worden niet
+meegenomen. Met `--zonder-verify` (vóór de migratie) sla je de build over. Echt
+uitrollen doe je met `run.sh` (MR's voor de groep) of `in-repo.sh` (je eigen clone).
 
 ## cruft update en conflicten
 
@@ -185,25 +188,16 @@ een boolean accepteert alleen `true` of `false`. Zie docs/adr/0005.
 ## Handwerk nodig
 
 Een service met de uitkomst "Handwerk nodig" (conflict of rode build) krijgt geen PR.
-Maak hem lokaal af, in je eigen clone met `in-repo.sh` (zie hierboven) of in een verse
-clone met `local.sh`:
+Maak hem af in je eigen clone met `in-repo.sh` (zie "In je eigen clone"): het stopt bij
+het conflict, wacht tot je het hebt opgelost en gaat na Enter verder. Push daarna en open
+zelf de MR, met de labels `migratie` en `<naam van de migratie>`.
 
-```bash
-./local.sh migraties/template-2026-10.env <git-url-van-de-service>   # stopt bij het conflict
-# los de conflicten op in work/<service> (of repareer de build), zie hieronder
-./local.sh --verder migraties/template-2026-10.env <service>          # commit en gaat verder
-git -C work/<service> push -u origin migratie/template-2026-10
-```
-
-Open daarna zelf de MR, met de labels `migratie` en `<naam van de migratie>`.
-`--verder` weigert zolang er nog conflicten of conflictmarkers in de service staan.
-
-Conflicten oplossen in IntelliJ: open `work/<service>` en kies *Git → Resolve Conflicts…*
-(de bestanden staan ook in het Commit-venster onder *Merge Conflicts*). In het
-merge-venster is links de service (*Yours*), rechts het template (*Theirs*) en in het
-midden het resultaat, met de vorige stand van het template als basis. Klaar met
-*Apply*; daarna `./local.sh --verder …`. Op de commandoregel kan het ook, bv. met
-`git checkout --theirs -- <bestand>` (template) of `--ours` (service) en `git add`.
+Conflicten oplossen in IntelliJ: kies *Git → Resolve Conflicts…* (de bestanden staan ook
+in het Commit-venster onder *Merge Conflicts*). In het merge-venster is links de service
+(*Yours*), rechts het template (*Theirs*) en in het midden het resultaat, met de vorige
+stand van het template als basis. Klaar met *Apply*, dan Enter in de terminal. Op de
+commandoregel kan het ook, bv. met `git checkout --theirs -- <bestand>` (template) of
+`--ours` (service) en `git add`.
 
 ## Over een hele GitLab-groep (multi-gitter)
 
@@ -232,7 +226,7 @@ Om een (dry-)run na te kijken staat per service in `runs/<migratie>-<tijd>/debug
 | `onafgemaakt.diff`, `status.txt` | bij Handwerk nodig: de stand waarin de migratie stopte, met de conflictmarkers |
 | `uitvoer.log` | de volledige uitvoer van de migratie voor die service (multi-gitter toont die niet) |
 
-Dat geldt voor `run.sh` (ook de dry-run) en `local.sh`.
+Dat geldt voor `run.sh` (ook de dry-run) en `uitproberen.sh`.
 
 ## Achterstand
 

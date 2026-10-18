@@ -7,7 +7,7 @@ die eruit gegenereerd zijn, om migraties lokaal mee te oefenen.
 voorbeeld/opzetten.sh          # template en services in work/voorbeeld/
 voorbeeld/wijzig-template.sh   # vier template-commits (zie wijzigingen/)
 ./achterstand.sh work/voorbeeld/services/*
-./local.sh voorbeeld/cruft-update.env \
+./uitproberen.sh voorbeeld/cruft-update.env \
     work/voorbeeld/services/bestel-service work/voorbeeld/services/klant-service
 ```
 
@@ -32,18 +32,11 @@ liquibase krijgt de datasource-URL mee.
   liquibase-wijziging raakt alleen `.cruft.json`, want bestel-service heeft geen liquibase.
 - **klant-service** heeft de logging op `DEBUG` gezet: de update stopt bij de
   template-commit "logging op warn" met een conflict in `application.properties`. Na
-  `--verder` volgen de chart-wijzigingen, en blijft zijn eigen databasehost
+  het oplossen volgen de chart-wijzigingen, en blijft zijn eigen databasehost
   (`klant-db`) gewoon staan naast de nieuwe `maximumPoolSize`.
 
-Het conflict afmaken: open `work/klant-service` in IntelliJ, kies *Git → Resolve
-Conflicts…* en kies in `application.properties` een waarde (of haal de markers met de
-hand weg en doe `git add`). Ga daarna verder:
-
-```bash
-./local.sh --verder voorbeeld/cruft-update.env klant-service
-```
-
-Of in een eigen clone, zoals je dat met een project in IntelliJ zou doen:
+`uitproberen.sh` laat alleen zien waar het stopt (in `work/klant-service`). Het conflict
+afmaken doe je in een eigen clone, zoals met een project in IntelliJ:
 
 ```bash
 git clone work/voorbeeld/services/klant-service /tmp/klant-service
@@ -51,18 +44,22 @@ cd /tmp/klant-service
 /pad/naar/migratie-tools/in-repo.sh /pad/naar/migratie-tools/voorbeeld/cruft-update.env
 ```
 
+Het script wacht bij het conflict: open `/tmp/klant-service` in IntelliJ, kies *Git →
+Resolve Conflicts…*, kies in `application.properties` een waarde, klik *Apply* en druk
+in de terminal op Enter.
+
 Een migratie met een recept (uit `recepten/`) verwijdert de debug-regel uit de eigen
 klasse `Bestellingen` van bestel-service:
 
 ```bash
-./local.sh voorbeeld/debug-opruimen.env work/voorbeeld/services/bestel-service
+./uitproberen.sh voorbeeld/debug-opruimen.env work/voorbeeld/services/bestel-service
 ```
 
 De wekelijkse opschoning probeer je op bestel-service, die rommel heeft in `BestelService`
 en `BestelServiceTest`:
 
 ```bash
-./local.sh voorbeeld/opschoning.env work/voorbeeld/services/bestel-service
+./uitproberen.sh voorbeeld/opschoning.env work/voorbeeld/services/bestel-service
 git -C work/bestel-service show
 ```
 
@@ -95,5 +92,5 @@ git show    # liquibase-sectie in values.yaml en de init container in deployment
 ```
 
 Uitzetten geeft een conflict als de service de init container zelf heeft aangepast; dat
-los je op zoals bij de cruft update, gevolgd door `cruft-zet.sh --verder`. Helm-templates in `chart/templates/` worden niet
+los je op zoals bij de cruft update: oplossen in IntelliJ en Enter in de terminal. Helm-templates in `chart/templates/` worden niet
 door cookiecutter gerenderd (`_copy_without_render`), omdat ze zelf `{{ }}` gebruiken.
