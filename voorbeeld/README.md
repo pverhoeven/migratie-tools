@@ -60,7 +60,7 @@ geen GitLab nodig. Draai de commando's vanuit de map van migratie-tools.
 | 3 | Cruft update uitproberen | `./uitproberen.sh voorbeeld/cruft-update.env work/voorbeeld/services/bestel-service work/voorbeeld/services/klant-service` | bestel-service "Gewijzigd" (acht commits), klant-service "Handwerk nodig" |
 | 4 | Het conflict afmaken | zie "Een conflict afmaken" hieronder | het script wacht, jij lost op in IntelliJ, Enter, klaar |
 | 5 | Een recept | `./uitproberen.sh voorbeeld/debug-opruimen.env work/voorbeeld/services/bestel-service` | de `println` in `Bestellingen` is weg |
-| 6 | Wekelijkse opschoning | `./uitproberen.sh voorbeeld/opschoning.env work/voorbeeld/services/bestel-service` | tien soorten rommel opgeruimd (zie hieronder); een tweede keer: "Ongewijzigd" |
+| 6 | Wekelijkse opschoning | `./uitproberen.sh voorbeeld/opschoning.env work/voorbeeld/services/bestel-service` | tien soorten rommel opgeruimd (zie hieronder); "Ongewijzigd" pas als de opschoning gemerged is (zie hieronder) |
 | 7 | Een variabele omzetten | zie "Een template-variabele omzetten" hieronder | init container en liquibase-sectie erbij |
 | 8 | Een feature voor alle afnemers | zie "Een feature: de gedeelde jar" hieronder | alleen klant-service doet mee; bestel- en losse-service "Niet van toepassing" |
 | 9 | Eigen migraties en recepten | zie "Eigen migraties en recepten" hieronder | de eigen migratie draait met een eigen recept dat ingebouwde recepten aanroept |
@@ -188,3 +188,14 @@ bestel-service heeft rommel in `BestelService` en `BestelServiceTest`:
 | `toString()` zonder `@Override` | `MissingOverrideAnnotation` |
 | `e.printStackTrace()` | `PrintStackTraceToLogError` |
 | `public` testklasse en testmethodes | `JUnit5BestPractices` |
+
+Een tweede keer `uitproberen.sh` geeft weer "Gewijzigd": het kloont steeds vers uit
+`work/voorbeeld/services/bestel-service`, en daar staat de rommel nog. "Ongewijzigd" zie
+je pas als de opschoning gemerged is, zoals na een MR. Doe dat na in een eigen clone:
+
+```bash
+git clone work/voorbeeld/services/bestel-service /tmp/bestel-service && cd /tmp/bestel-service
+/pad/naar/migratie-tools/in-repo.sh /pad/naar/migratie-tools/voorbeeld/opschoning.env  # Gewijzigd
+git switch main && git merge --ff-only migratie/opschoning && git branch -d migratie/opschoning
+/pad/naar/migratie-tools/in-repo.sh /pad/naar/migratie-tools/voorbeeld/opschoning.env  # Ongewijzigd
+```
