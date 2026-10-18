@@ -70,12 +70,29 @@ template-variabele zetten), de teams vooraf waarschuwen, of bewust mergen.
 ### Wat er al is en wat nodig is
 
 - Er is al: `uitproberen.sh` met `TEMPLATE_REF=<branch>` (handmatig een gepushte
-  template-branch uitproberen, zie de README), `--zonder-verify`, `lib/samenvatting.sh`
+  template-branch uitproberen, zie de README), `--zonder-verify`, `lib/samenvatting.sh`,
   de stop-commit per service in `resultaten.tsv`, en "Niet van toepassing" voor services
-  van een ander template (dat de branch niet heeft).
-- Nodig:
-  - Een pipeline op de template-repo die migratie-tools aanroept en het MR-commentaar
-    plaatst.
+  van een ander template (dat de branch niet heeft). `run.sh` accepteert `TEMPLATE_REF`
+  bij een dry-run, dus een Jenkins-build met de migratie `cruft-update`, een dry-run en
+  `TEMPLATE_REF` is al de analyse over de hele groep; alleen het automatische deel
+  ontbreekt.
+- Nodig, de pipeline:
+  1. **Parameter `TEMPLATE_REF` in de Jenkinsfile.** Die kun je in Jenkins nu niet
+     opgeven. Klein.
+  2. **Commentaar in de template-MR.** Na de run de samenvatting via de GitLab API in de
+     MR zetten. De job moet weten welke MR: het project en het MR-nummer, bv. als
+     parameters `TEMPLATE_PROJECT` en `TEMPLATE_MR`. Klein: `lib/gitlab.sh` heeft een
+     API-helper en het token met api-rechten bestaat al.
+  3. **De trigger.** Een keuze:
+     - **Op verzoek:** je start de Jenkins-job zelf, met `TEMPLATE_REF` en het
+       MR-nummer. Niets nodig in de template-repo's.
+     - **Automatisch per push op een MR:** een webhook per template-repo naar Jenkins,
+       met een plugin (bv. GitLab-plugin of Generic Webhook Trigger). Dat is
+       instellingswerk bij de organisatie, buiten deze repo, en elke push kost een
+       volledige run over alle services, met builds.
+
+  Voorstel: begin met 1 en 2 en "op verzoek"; de webhook kan later, de job blijft
+  dezelfde.
 
 ### Aandachtspunten
 
