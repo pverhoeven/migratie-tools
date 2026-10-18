@@ -74,6 +74,11 @@ done
 
 case "$status" in
   0)
+    if [ -z "$(git rev-list "$basis..HEAD")" ]; then
+      echo "--- geen commits op $branch, niets te pushen; de branch weghalen:"
+      echo "    git switch - && git branch -D $branch"
+      exit 0
+    fi
     echo "--- commits op $branch:"
     git --no-pager log --oneline "$basis..HEAD"
     echo "--- push en open de MR zelf (labels: migratie, $MIGRATIE):"
