@@ -19,11 +19,23 @@ trap 'rm -rf "$tmp"' EXIT
 uitvoer="$tmp/uitvoer.tsv"
 : > "$uitvoer"
 
+# Voortgang op stderr, zodat de tabel op stdout schoon blijft. In een terminal steeds op
+# dezelfde regel, anders (bv. in Jenkins) een regel per stap.
+voortgang() {  # <tekst>
+  if [ -t 2 ]; then printf '\r\033[K%s' "$1" >&2; else printf '%s\n' "$1" >&2; fi
+}
+voortgang_klaar() {
+  if [ -t 2 ]; then printf '\r\033[K' >&2; fi
+}
+
 # Eén clone per template (gecachet op URL).
 template_clone() {  # <url>
   local dir
   dir="$tmp/template-$(printf '%s' "$1" | shasum | cut -c1-12)"
-  [ -d "$dir" ] || git clone --quiet --bare "$1" "$dir"
+  if [ ! -d "$dir" ]; then
+    voortgang "template clonen: $(basename "$1" .git)"
+    git clone --quiet --bare "$1" "$dir"
+  fi
   echo "$dir"
 }
 
@@ -54,14 +66,21 @@ else
   vereist curl
   # shellcheck disable=SC2086
   uitsluit="$(repo_regex ${UITSLUITLIJST:-} || true)"
-  projecten="$(groep_projecten)" || { echo "kon de projecten niet opvragen bij GitLab" >&2; exit 2; }
+  voortgang "projecten van $GITLAB_GROUP opvragen bij GitLab"
+  projecten="$(groep_projecten)" || { voortgang_klaar; echo "kon de projecten niet opvragen bij GitLab" >&2; exit 2; }
+  totaal="$(grep -c . <<< "$projecten" || true)"
+  i=0
   while IFS=$'\t' read -r id pad ref; do
     [ -n "$id" ] || continue
+    i=$((i + 1))
     if [ -n "$uitsluit" ] && [[ "$pad" =~ $uitsluit ]]; then continue; fi
+    voortgang "[$i/$totaal] $pad"
     # Geen .cruft.json = geen template-service; die tellen hier niet mee.
     gitlab_api "projects/$id/repository/files/.cruft.json/raw?ref=$ref" > "$tmp/cruft.json" 2>/dev/null || continue
     meet "$pad" "$tmp/cruft.json"
   done <<< "$projecten"
+  voortgang_klaar
+  echo "$totaal project(en) bekeken, $(grep -c . "$uitvoer" || true) template-service(s)" >&2
 fi
 
 if [ ! -s "$uitvoer" ]; then
