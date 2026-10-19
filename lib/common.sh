@@ -36,12 +36,27 @@ vereist() {
 # Draai Python met de interpreter van cruft, zodat cruft en cookiecutter importeerbaar
 # zijn (ook bij een pipx-installatie). Overschrijfbaar met CRUFT_PYTHON.
 cruft_python() {
-  local py
+  local kandidaat venvs map py=() kandidaten=()
   if [ -n "${CRUFT_PYTHON:-}" ]; then
     py=("$CRUFT_PYTHON")
   else
     vereist cruft
-    read -r -a py <<< "$(head -1 "$(command -v cruft)" | sed 's/^#! *//')"
+    if [ "$(head -c2 "$(command -v cruft)")" = "#!" ]; then
+      read -r -a py <<< "$(head -1 "$(command -v cruft)" | sed 's/^#! *//')"
+    else
+      # Op Windows is cruft een .exe zonder #!-regel: zoek een Python die cruft kent,
+      # eerst naast cruft.exe (venv: Scripts/python.exe, pip: <python>/Scripts/cruft.exe).
+      map="$(dirname "$(command -v cruft)")"
+      kandidaten+=("$map/python.exe" "$map/../python.exe")
+      if type -P pipx >/dev/null && venvs="$(pipx environment --value PIPX_LOCAL_VENVS 2>/dev/null | tr -d '\r')"; then
+        kandidaten+=("$venvs/cruft/Scripts/python.exe" "$venvs/cruft/bin/python")
+      fi
+      kandidaten+=(python3 python py)
+      for kandidaat in "${kandidaten[@]}"; do
+        if "$kandidaat" -c 'import cruft' >/dev/null 2>&1; then py=("$kandidaat"); break; fi
+      done
+      [ ${#py[@]} -gt 0 ] || { echo "geen Python met cruft gevonden; zet CRUFT_PYTHON in config.env" >&2; exit 1; }
+    fi
   fi
   "${py[@]}" "$@"
 }
