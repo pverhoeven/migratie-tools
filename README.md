@@ -90,6 +90,23 @@ eerst met het voorbeeld (`voorbeeld/README.md`) voordat je hem ophoogt.
 cp config.env.example config.env   # GitLab- en Maven-instellingen
 ```
 
+### Aliassen
+
+De scripts vinden hun eigen map, dus ze werken vanuit elke map, bv. vanuit de clone van
+een service. Met aliassen in `~/.bashrc` hoef je het pad niet te typen:
+
+```bash
+MT=~/migratie-tools   # waar je migratie-tools hebt staan
+alias migratie="$MT/migratie.sh"
+alias in-repo="$MT/in-repo.sh"
+alias uitproberen="$MT/uitproberen.sh"
+alias achterstand="$MT/achterstand.sh"
+```
+
+Daarna `source ~/.bashrc` of een nieuwe terminal; in een service: `in-repo cruft-update`.
+Leest Git Bash (Windows) `~/.bashrc` niet, zet dan in `~/.bash_profile`:
+`[ -f ~/.bashrc ] && . ~/.bashrc`.
+
 ## De eerste keer
 
 Begin met wat niets wijzigt: zo zie je eerst of de toegang en de tools werken, voordat er
