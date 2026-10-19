@@ -12,6 +12,8 @@
 # een template-wijziging uitproberen vóór die gemerged is (niet voor een echte run).
 # Heeft het template van de service die ref niet (een ander template), dan exit 10:
 # niet van toepassing.
+# Met CRUFT_IN_EEN_KEER=ja in één stap naar het doel: één 3-way merge en één commit, om
+# een service die ver achterloopt snel bij te werken (hooguit één conflictronde).
 # Bij het eerste conflict stopt de update, met diff3-conflictmarkers in de bestanden.
 # De conflicten staan ook als echte git-conflicten in de index (basis, service,
 # template), zodat een IDE (bv. IntelliJ: Git > Resolve Conflicts) ze 3-way kan mergen.
@@ -53,10 +55,13 @@ fi
 # De commits op de hoofdlijn van het template sinds de huidige stand, oudste eerst.
 stappen=()
 while IFS= read -r c; do stappen+=("$c"); done < <(tpl rev-list --reverse --first-parent "$huidig..$doel")
-if ! tpl merge-base --is-ancestor "$huidig" "$doel"; then
-  stappen=("$doel")  # huidige stand ligt niet op de hoofdlijn: in één keer
-fi
 echo "${#stappen[@]} template-commit(s) achter, naar $(tpl rev-parse --short "$doel")"
+in_een_keer=0
+if ! tpl merge-base --is-ancestor "$huidig" "$doel"; then
+  in_een_keer=1  # huidige stand ligt niet op de hoofdlijn
+elif [ "${CRUFT_IN_EEN_KEER:-nee}" = "ja" ] && [ ${#stappen[@]} -gt 1 ]; then
+  in_een_keer=1; echo "in één keer (CRUFT_IN_EEN_KEER=ja)"
+fi
 
 # Commit-boodschap voor een template-commit: neemt het type over als de template-commit
 # een conventional commit is (feat: ..., fix(x)!: ...), anders chore.
@@ -69,6 +74,17 @@ bericht_voor() {  # <commit>
     printf 'chore(cruft): %s (%s)' "$onderwerp" "$(tpl rev-parse --short "$1")"
   fi
 }
+
+# Commit-boodschap voor alle stappen in één keer, met de template-commits in de body.
+bericht_samen() {  # <commit>
+  printf 'chore(cruft): bijwerken naar %s (%s template-commits)\n\n' "$(tpl rev-parse --short "$1")" "$aantal"
+  tpl log --reverse --first-parent --format='- %s (%h)' "$huidig..$1"
+}
+aantal=${#stappen[@]}
+if [ "$in_een_keer" -eq 1 ]; then
+  bericht_voor() { bericht_samen "$@"; }
+  stappen=("$doel")
+fi
 
 # Bij een conflict bewaren we de commit-boodschap (zoals git dat met MERGE_MSG doet),
 # zodat --verder de opgeloste stap met dezelfde boodschap commit.
@@ -83,6 +99,7 @@ vorige="$huidig"
 for stap in "${stappen[@]}"; do
   van="$(tpl rev-parse --short "$vorige")"; naar="$(tpl rev-parse --short "$stap")"
   onderwerp="$(tpl log -1 --format=%s "$stap")"
+  if [ "$in_een_keer" -eq 1 ]; then onderwerp="$aantal template-commits in één keer"; fi
   echo "-- template $van -> $naar: $onderwerp"
   render "$vorige" "$tmp/oud" "$tmp/oud.json"
   render "$stap" "$tmp/nieuw" "$tmp/nieuw.json"

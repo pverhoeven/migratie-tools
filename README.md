@@ -317,6 +317,21 @@ bestanden (inclusief de basis). De conflicten staan ook als echte git-conflicten
 index (basis, service, template), zodat je ze in je IDE 3-way kunt mergen. Elke
 template-commit wordt een eigen commit in de service.
 
+### In één keer bijwerken
+
+Loopt een service ver achter, dan kost commit voor commit veel conflictrondes. Met
+`CRUFT_IN_EEN_KEER=ja` gaat de cruft update in één stap van `.cruft.json` naar de
+nieuwste commit: dezelfde 3-way merge, maar hooguit één conflictronde en één commit,
+met de template-commits in de body. In het menu kies je bij een cruft update tussen
+beide (commit voor commit of in één keer).
+
+```bash
+CRUFT_IN_EEN_KEER=ja ~/migratie-tools/in-repo.sh cruft-update
+```
+
+Is de service eenmaal bij, laat het dan weer weg: commit voor commit (de standaard,
+ook in de pipeline) laat per template-wijziging zien wat er gebeurt en waar hij botst.
+
 ### Een template-branch uitproberen
 
 Een wijziging in het template probeer je uit vóór die gemerged is: push hem naar een

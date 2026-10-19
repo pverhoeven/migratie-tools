@@ -172,6 +172,21 @@ uitvoeren() {  # <commando...>: tonen, bevestigen en starten
   "$@"
 }
 
+# Bij een cruft update: alle template-commits in één keer of (standaard) één voor één.
+# Geeft "env CRUFT_IN_EEN_KEER=ja" in EEN_KEER, om voor het commando te zetten.
+in_een_keer() {  # <migratiebestand>
+  EEN_KEER=()
+  [ -n "$(bash -c 'set -a; . "$1"; echo "${CRUFT_UPDATE:-}"' _ "$1")" ] || return 0
+  kies "Hoe de cruft update?" \
+    "Commit voor commit (standaard)
+       Elke template-commit een eigen commit; bij een conflict zie je precies welke
+       template-wijziging botst." \
+    "In één keer naar de nieuwste commit
+       Eén merge en één commit, hooguit één conflictronde; sneller bij een grote
+       achterstand."
+  if [ "$KEUZE" -eq 2 ]; then EEN_KEER=(env CRUFT_IN_EEN_KEER=ja); fi
+}
+
 # --- menu ------------------------------------------------------------------------------
 
 echo "migratie-tools: migraties (cruft update en/of OpenRewrite-recept) uitrollen over services"
@@ -204,14 +219,16 @@ case "$KEUZE" in
     if [ "$(git -C "$repo" branch --show-current 2>/dev/null)" = "$branch" ] && ja "Je staat al op $branch; verder na handwerk (--verder)?" j; then
       uitvoeren "$ROOT/in-repo.sh" --verder "$MIGRATIEBESTAND" "$repo"
     else
-      uitvoeren "$ROOT/in-repo.sh" "$MIGRATIEBESTAND" "$repo"
+      in_een_keer "$MIGRATIEBESTAND"
+      uitvoeren ${EEN_KEER[@]+"${EEN_KEER[@]}"} "$ROOT/in-repo.sh" "$MIGRATIEBESTAND" "$repo"
     fi ;;
   2)
     kies_migratie; branch_en_titel
     vraag "Welke services? (paden of git-URL's, gescheiden door spaties)" ""
     read -r -a repos <<< "$ANTWOORD"
     [ ${#repos[@]} -gt 0 ] || { echo "geen repo's opgegeven" >&2; exit 2; }
-    uitvoeren "$ROOT/uitproberen.sh" "$MIGRATIEBESTAND" "${repos[@]}" ;;
+    in_een_keer "$MIGRATIEBESTAND"
+    uitvoeren ${EEN_KEER[@]+"${EEN_KEER[@]}"} "$ROOT/uitproberen.sh" "$MIGRATIEBESTAND" "${repos[@]}" ;;
   3)
     kies_migratie; branch_en_titel
     vraag "Alleen services waarvan de naam matcht (regex, leeg = de hele groep)" ""
