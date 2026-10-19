@@ -3,6 +3,9 @@
 # op de hoofdlijn van het template hij achterloopt (de achterstand). Wijzigt niets.
 #
 # Gebruik: ./achterstand.sh                  alle services in GITLAB_GROUP (GitLab-API)
+#          ./achterstand.sh --repo-include <regex>
+#                                             alleen projecten waarvan het pad matcht,
+#                                             bv. 'backend/' of '-api$'
 #          ./achterstand.sh <repo> [<repo>...] lokale repo's
 set -euo pipefail
 
@@ -55,6 +58,12 @@ meet() {  # <service> <.cruft.json>
   printf '%s\t%s\t%s\t%s\n' "$service" "$versie" "$achter" "$nieuwste" >> "$uitvoer"
 }
 
+include=""
+case "${1:-}" in
+  --repo-include) include="${2:?--repo-include heeft een regex nodig}"; shift 2 ;;
+  --repo-include=*) include="${1#*=}"; shift ;;
+esac
+
 if [ $# -gt 0 ]; then
   for repo in "$@"; do
     name="$(basename "${repo%/}")"
@@ -68,6 +77,11 @@ else
   uitsluit="$(repo_regex ${UITSLUITLIJST:-} || true)"
   voortgang "projecten van $GITLAB_GROUP opvragen bij GitLab"
   projecten="$(groep_projecten)" || { voortgang_klaar; echo "kon de projecten niet opvragen bij GitLab" >&2; exit 2; }
+  if [ -n "$include" ]; then
+    projecten="$(while IFS=$'\t' read -r id pad ref; do
+      if [[ "$pad" =~ $include ]]; then printf '%s\t%s\t%s\n' "$id" "$pad" "$ref"; fi
+    done <<< "$projecten")"
+  fi
   totaal="$(grep -c . <<< "$projecten" || true)"
   i=0
   while IFS=$'\t' read -r id pad ref; do
