@@ -7,6 +7,8 @@
 #                                             alleen projecten waarvan het pad matcht,
 #                                             bv. 'backend/' of '-api$'
 #          ./achterstand.sh <repo> [<repo>...] lokale repo's
+#   --uitgebreid  meld ook projecten zonder .cruft.json (404), met de reden van GitLab
+#                 (bv. File Not Found, of Project Not Found bij te weinig rechten)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -59,10 +61,15 @@ meet() {  # <service> <.cruft.json>
 }
 
 include=""
-case "${1:-}" in
-  --repo-include) include="${2:?--repo-include heeft een regex nodig}"; shift 2 ;;
-  --repo-include=*) include="${1#*=}"; shift ;;
-esac
+uitgebreid=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --repo-include) include="${2:?--repo-include heeft een regex nodig}"; shift 2 ;;
+    --repo-include=*) include="${1#*=}"; shift ;;
+    --uitgebreid) uitgebreid=1; shift ;;
+    *) break ;;
+  esac
+done
 
 if [ $# -gt 0 ]; then
   for repo in "$@"; do
@@ -94,7 +101,10 @@ else
     code="$(gitlab_bestand "$id" .cruft.json "$ref" "$tmp/cruft.json" 2>"$tmp/curl.err")" || code="${code:-000}"
     case "$code" in
       200) meet "$pad" "$tmp/cruft.json" ;;
-      404) ;;
+      404) if [ "$uitgebreid" -eq 1 ]; then
+             voortgang_klaar
+             echo "$pad: geen .cruft.json op $ref (HTTP 404$(head -c 200 "$tmp/cruft.json" 2>/dev/null | tr -d '\n' | sed 's/^/: /'))" >&2
+           fi ;;
       *) voortgang_klaar
          echo "let op: $pad: .cruft.json niet op te halen (HTTP $code$(head -c 200 "$tmp/cruft.json" 2>/dev/null | tr -d '\n' | sed 's/^/: /')$(sed 's/^/; /' "$tmp/curl.err" | tr -d '\n'))" >&2
          fouten=$((fouten + 1)) ;;

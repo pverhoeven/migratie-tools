@@ -420,6 +420,7 @@ Dat geldt voor `run.sh` (ook de dry-run) en `uitproberen.sh`.
 ```bash
 ./achterstand.sh                       # alle template-services in GITLAB_GROUP
 ./achterstand.sh --repo-include 'backend/'   # alleen projecten waarvan het pad matcht
+./achterstand.sh --uitgebreid          # ook projecten zonder .cruft.json, met de reden van GitLab
 ./achterstand.sh ~/code/service-a      # of lokale repo's
 ```
 
