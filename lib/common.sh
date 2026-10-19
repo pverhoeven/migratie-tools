@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Gedeelde hulpfuncties (wordt gesourced, niet los uitgevoerd).
 
+# jq op Windows (Git Bash) schrijft regels met \r\n. In $(jq ...) blijft de \r dan aan de
+# waarde hangen (bv. een branch "main\r", die niet bestaat); daarom altijd zonder \r.
+jq() { command jq "$@" | tr -d '\r'; }
+
 # Gebruik de Maven wrapper als de repo er een heeft, anders de globale mvn.
 mvn_cmd() {
   if [ -x ./mvnw ]; then echo "./mvnw"; else echo "mvn"; fi
@@ -10,7 +14,7 @@ mvn_cmd() {
 vereist() {
   local p
   for p in "$@"; do
-    command -v "$p" >/dev/null || { echo "$p is nodig maar niet gevonden" >&2; exit 1; }
+    type -P "$p" >/dev/null || { echo "$p is nodig maar niet gevonden" >&2; exit 1; }  # het programma, niet een functie
   done
 }
 

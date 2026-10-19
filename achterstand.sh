@@ -39,7 +39,12 @@ template_clone() {  # <url>
   dir="$tmp/template-$(printf '%s' "$1" | cksum | cut -d' ' -f1)"
   if [ ! -d "$dir" ]; then
     voortgang "template clonen: $(basename "$1" .git)"
-    git clone --quiet --bare "$1" "$dir"
+    # Alleen de commits (geen bestanden of mappen): genoeg om de achterstand te tellen.
+    # Een lokaal pad (bv. het voorbeeld) kent geen filter; dat clonet toch al snel.
+    case "$1" in
+      *://*|*@*:*) git clone --quiet --bare --filter=tree:0 "$1" "$dir" ;;
+      *) git clone --quiet --bare "$1" "$dir" ;;
+    esac
   fi
   echo "$dir"
 }

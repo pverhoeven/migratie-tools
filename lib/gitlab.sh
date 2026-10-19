@@ -29,7 +29,7 @@ open_migratie_mrs() {
   groep="$(jq -rn --arg g "$GITLAB_GROUP" '$g | @uri')"
   while :; do
     resp="$(gitlab_api "groups/$groep/merge_requests?state=opened&labels=migratie&per_page=100&page=$page")" || return 1
-    n="$(jq length <<< "$resp")"
+    n="$(jq length <<< "$resp")" || return 1
     jq -r '.[] | [(.references.full | sub("!.*$"; "")), ((.labels - ["migratie"]) | join(","))] | @tsv' <<< "$resp"
     [ "$n" -lt 100 ] && break
     page=$((page + 1))
@@ -43,7 +43,7 @@ groep_projecten() {
   groep="$(jq -rn --arg g "$GITLAB_GROUP" '$g | @uri')"
   while :; do
     resp="$(gitlab_api "groups/$groep/projects?include_subgroups=true&archived=false&per_page=100&page=$page")" || return 1
-    n="$(jq length <<< "$resp")"
+    n="$(jq length <<< "$resp")" || return 1
     jq -r '.[] | [.id, .path_with_namespace, (.default_branch // "main")] | @tsv' <<< "$resp"
     [ "$n" -lt 100 ] && break
     page=$((page + 1))
@@ -59,7 +59,7 @@ migratie_mrs() {  # <naam van de migratie>
   labels="$(jq -rn --arg l "migratie,$1" '$l | @uri')"
   while :; do
     resp="$(gitlab_api "groups/$groep/merge_requests?state=all&labels=$labels&per_page=100&page=$page")" || return 1
-    n="$(jq length <<< "$resp")"
+    n="$(jq length <<< "$resp")" || return 1
     jq -r '.[] | [.project_id, (.references.full | sub("!.*$"; "")), .iid, .state, .created_at,
                   ((now - (.created_at | sub("\\.[0-9]+"; "") | fromdateiso8601)) / 86400 | floor),
                   (.has_conflicts // false), .web_url] | @tsv' <<< "$resp"

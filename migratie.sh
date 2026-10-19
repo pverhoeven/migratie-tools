@@ -6,6 +6,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
+. "$ROOT/lib/common.sh"
 . "$ROOT/lib/migratie.sh"
 . "$ROOT/lib/recepten.sh"
 if [ -f "$ROOT/config.env" ]; then

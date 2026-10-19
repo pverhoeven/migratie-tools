@@ -19,6 +19,7 @@
 #   20 Handwerk nodig
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
+. "$ROOT/lib/common.sh"
 
 : "${MIGRATIE:?zet MIGRATIE}"
 SERVICE="${REPOSITORY:-$(basename "$PWD")}"   # REPOSITORY zet multi-gitter
