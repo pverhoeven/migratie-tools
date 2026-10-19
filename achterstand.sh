@@ -33,23 +33,37 @@ voortgang_klaar() {
   if [ -t 2 ]; then printf '\r\033[K' >&2; fi
 }
 
-# Eén clone per template (gecachet op URL; cksum zit ook in Git Bash, shasum niet).
+# Eén clone per template, bewaard in work/.templates (of TEMPLATE_CACHE) zodat een
+# volgende run alleen de nieuwe commits ophaalt. Per run wordt elk template één keer
+# bijgewerkt, ook als services de URL verschillend schrijven (zie template_sleutel).
+cache="${TEMPLATE_CACHE:-$ROOT/work/.templates}"
+mkdir -p "$cache"
 template_clone() {  # <url>
-  local dir
-  dir="$tmp/template-$(printf '%s' "$1" | cksum | cut -d' ' -f1)"
-  if [ ! -d "$dir" ]; then
-    voortgang "template clonen: $(basename "$1" .git)"
+  local url="$1" naam sleutel dir filter=()
+  naam="$(basename "$url" .git)"
+  sleutel="$(template_sleutel "$url" | cksum | cut -d' ' -f1)"
+  dir="$cache/$sleutel.git"
+  if [ ! -e "$tmp/bijgewerkt-$sleutel" ]; then
     # Alleen de commits (geen bestanden of mappen): genoeg om de achterstand te tellen.
-    # Een lokaal pad (bv. het voorbeeld) kent geen filter; dat clonet toch al snel.
+    # Een lokaal pad (bv. het voorbeeld) kent geen filter.
+    case "$url" in *://*|*@*:*) filter=(--filter=tree:0) ;; esac
     # De uitvoer van git (ondanks --quiet soms voortgang) alleen tonen als het misgaat.
-    local filter=()
-    case "$1" in *://*|*@*:*) filter=(--filter=tree:0) ;; esac
-    if ! git clone --quiet --bare ${filter[@]+"${filter[@]}"} "$1" "$dir" > "$tmp/clone.log" 2>&1; then
+    if [ -d "$dir" ]; then
+      voortgang "template bijwerken: $naam"
+      git -C "$dir" remote set-url origin "$url"
+      git -C "$dir" fetch --quiet --prune origin '+refs/heads/*:refs/heads/*' > "$tmp/clone.log" 2>&1
+    else
+      voortgang "template clonen: $naam"
+      rm -rf "$dir.nieuw"
+      git clone --quiet --bare ${filter[@]+"${filter[@]}"} "$url" "$dir.nieuw" > "$tmp/clone.log" 2>&1 \
+        && mv "$dir.nieuw" "$dir"
+    fi || {
       voortgang_klaar
-      echo "let op: template $(basename "$1" .git) niet te clonen:" >&2
+      echo "let op: template $naam niet te clonen of bij te werken:" >&2
       sed 's/^/  /' "$tmp/clone.log" >&2
       return 1
-    fi
+    }
+    touch "$tmp/bijgewerkt-$sleutel"
   fi
   echo "$dir"
 }
@@ -70,7 +84,7 @@ git_met_token() {
 # Schrijft "<service><TAB><template-commit><TAB><achterstand><TAB><nieuwste>" voor één .cruft.json.
 meet() {  # <service> <.cruft.json>
   local service="$1" url commit tpl versie nieuwste achter
-  url="$(jq -r .template "$2")"; commit="$(jq -r .commit "$2")"
+  url="$(template_url "$2")"; commit="$(jq -r .commit "$2")"
   if ! tpl="$(template_clone "$url")"; then
     printf '%s\t%s\t%s\t%s\n' "$service" "?" "?" "template niet te clonen" >> "$uitvoer"; return
   fi
@@ -120,6 +134,11 @@ else
     i=$((i + 1))
     if [ -n "$uitsluit" ] && [[ "$pad" =~ $uitsluit ]]; then continue; fi
     voortgang "[$i/$totaal] $pad"
+    # Zonder default branch (een lege repo) is er niets op te halen.
+    if [ -z "$ref" ]; then
+      if [ "$uitgebreid" -eq 1 ]; then voortgang_klaar; echo "$pad: lege repo (geen default branch)" >&2; fi
+      continue
+    fi
     # Geen .cruft.json (404) = geen template-service; die tellen hier niet mee. Een
     # andere fout (rechten, netwerk) melden we, anders lijkt het alsof er niets is.
     code="$(gitlab_bestand "$id" .cruft.json "$ref" "$tmp/cruft.json" 2>"$tmp/curl.err")" || code="${code:-000}"

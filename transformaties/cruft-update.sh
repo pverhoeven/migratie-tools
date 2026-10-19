@@ -30,7 +30,7 @@ fi
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-git clone --quiet "$(jq -r .template .cruft.json)" "$tmp/template"
+git clone --quiet "$(template_url .cruft.json)" "$tmp/template"
 tpl() { git -C "$tmp/template" "$@"; }
 
 huidig="$(jq -r .commit .cruft.json)"

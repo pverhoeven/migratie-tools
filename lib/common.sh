@@ -5,6 +5,21 @@
 # waarde hangen (bv. een branch "main\r", die niet bestaat); daarom altijd zonder \r.
 jq() { command jq "$@" | tr -d '\r'; }
 
+# De git-URL van het template uit een .cruft.json. cruft en cookiecutter accepteren ook
+# git+https://..., git zelf niet.
+template_url() {  # <.cruft.json>
+  local u
+  u="$(jq -r .template "$1")"
+  printf '%s' "${u#git+}"
+}
+
+# Eén sleutel per template, hoe de URL ook geschreven is: git@host:g/t.git,
+# https://host/g/t en git+https://host/g/t.git/ zijn allemaal host/g/t.
+template_sleutel() {  # <url>
+  printf '%s' "${1#git+}" | tr '[:upper:]' '[:lower:]' \
+    | sed -E 's#^[a-z+]+://##; s#^[^@/]+@##; s#^([^/:]+):#\1/#; s#/+$##; s#\.git$##'
+}
+
 # Gebruik de Maven wrapper als de repo er een heeft, anders de globale mvn.
 mvn_cmd() {
   if [ -x ./mvnw ]; then echo "./mvnw"; else echo "mvn"; fi

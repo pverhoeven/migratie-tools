@@ -31,7 +31,7 @@ fi
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-git clone --quiet "$(jq -r .template .cruft.json)" "$tmp/template"
+git clone --quiet "$(template_url .cruft.json)" "$tmp/template"
 commit="$(jq -r .commit .cruft.json)"
 git -C "$tmp/template" cat-file -e "$commit^{commit}" 2>/dev/null \
   || { reden "de template-commit ${commit:0:7} uit .cruft.json bestaat niet (meer) in het template"; exit 2; }

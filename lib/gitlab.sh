@@ -37,14 +37,14 @@ open_migratie_mrs() {
 }
 
 # Projecten in de groep (inclusief subgroepen, zonder gearchiveerde), als regels
-# "<id><TAB><pad><TAB><default-branch>".
+# "<id><TAB><pad><TAB><default-branch>"; de default branch is leeg bij een lege repo.
 groep_projecten() {
   local groep page=1 resp n
   groep="$(jq -rn --arg g "$GITLAB_GROUP" '$g | @uri')"
   while :; do
     resp="$(gitlab_api "groups/$groep/projects?include_subgroups=true&archived=false&per_page=100&page=$page")" || return 1
     n="$(jq length <<< "$resp")" || return 1
-    jq -r '.[] | [.id, .path_with_namespace, (.default_branch // "main")] | @tsv' <<< "$resp"
+    jq -r '.[] | [.id, .path_with_namespace, (.default_branch // "")] | @tsv' <<< "$resp"
     [ "$n" -lt 100 ] && break
     page=$((page + 1))
   done

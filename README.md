@@ -428,6 +428,11 @@ Toont per template-service op welke template-commit hij zit en hoeveel commits v
 template hij achterloopt, de grootste achterstand bovenaan. Handig vóór je een nieuwe
 template-migratie start: services die ver achterlopen krijgen meer kans op conflicten.
 
+Van elke service haalt het alleen `.cruft.json` op (via de API); de templates clonet het
+met alleen hun commits en bewaart ze in `work/.templates` (of `TEMPLATE_CACHE`), zodat een
+volgende run alleen de nieuwe commits ophaalt. Weggooien mag altijd; dan clonet het
+opnieuw.
+
 ## Status na de uitrol
 
 ```bash
