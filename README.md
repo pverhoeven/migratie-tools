@@ -421,11 +421,13 @@ Dat geldt voor `run.sh` (ook de dry-run) en `uitproberen.sh`.
 ./achterstand.sh                       # alle template-services in GITLAB_GROUP
 ./achterstand.sh --repo-include 'backend/'   # alleen projecten waarvan het pad matcht
 ./achterstand.sh --uitgebreid          # ook projecten zonder .cruft.json, met de reden van GitLab
+./achterstand.sh --template '^spring-' # alleen services van templates waarvan de naam matcht
 ./achterstand.sh ~/code/service-a      # of lokale repo's
 ```
 
-Toont per template-service op welke template-commit hij zit en hoeveel commits van het
-template hij achterloopt, de grootste achterstand bovenaan. Handig vóór je een nieuwe
+Toont per template een blok (met de nieuwste commit van dat template) en daarin per
+service op welke template-commit hij zit en hoeveel commits hij achterloopt, de grootste
+achterstand bovenaan. Handig vóór je een nieuwe
 template-migratie start: services die ver achterlopen krijgen meer kans op conflicten.
 
 Van elke service haalt het alleen `.cruft.json` op (via de API); de templates clonet het

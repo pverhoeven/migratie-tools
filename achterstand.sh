@@ -7,6 +7,7 @@
 #                                             alleen projecten waarvan het pad matcht,
 #                                             bv. 'backend/' of '-api$'
 #          ./achterstand.sh <repo> [<repo>...] lokale repo's
+#   --template <regex>  alleen services van templates waarvan de naam matcht
 #   --uitgebreid  meld ook projecten zonder .cruft.json (404), met de reden van GitLab
 #                 (bv. File Not Found, of Project Not Found bij te weinig rechten)
 set -euo pipefail
@@ -83,27 +84,33 @@ git_met_token() {
 
 # Schrijft "<service><TAB><template-commit><TAB><achterstand><TAB><nieuwste>" voor één .cruft.json.
 meet() {  # <service> <.cruft.json>
-  local service="$1" url commit tpl versie nieuwste achter
+  local service="$1" url naam commit tpl versie nieuwste achter
   url="$(template_url "$2")"; commit="$(jq -r .commit "$2")"
+  naam="$(basename "${url%/}" .git)"
+  # --template: alleen services van templates waarvan de naam matcht.
+  if [ -n "$alleen_template" ] && ! [[ "$naam" =~ $alleen_template ]]; then return; fi
   if ! tpl="$(template_clone "$url")"; then
-    printf '%s\t%s\t%s\t%s\n' "$service" "?" "?" "template niet te clonen" >> "$uitvoer"; return
+    printf '%s\t%s\t%s\t%s\t%s\n' "$naam" "$service" "?" "?" "template niet te clonen" >> "$uitvoer"; return
   fi
   if ! git -C "$tpl" cat-file -e "$commit^{commit}" 2>/dev/null; then
-    printf '%s\t%s\t%s\t%s\n' "$service" "${commit:0:7}" "?" "commit onbekend in template" >> "$uitvoer"; return
+    printf '%s\t%s\t%s\t%s\t%s\n' "$naam" "$service" "${commit:0:7}" "?" "commit onbekend in template" >> "$uitvoer"; return
   fi
   versie="$(git -C "$tpl" log -1 --format='%h %cs' "$commit")"
   nieuwste="$(git -C "$tpl" log -1 --format='%h %cs' HEAD)"
   achter="$(git -C "$tpl" rev-list --count --first-parent "$commit..HEAD")"
-  printf '%s\t%s\t%s\t%s\n' "$service" "$versie" "$achter" "$nieuwste" >> "$uitvoer"
+  printf '%s\t%s\t%s\t%s\t%s\n' "$naam" "$service" "$versie" "$achter" "nieuwste $nieuwste" >> "$uitvoer"
 }
 
 include=""
 uitgebreid=0
+alleen_template=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --repo-include) include="${2:?--repo-include heeft een regex nodig}"; shift 2 ;;
     --repo-include=*) include="${1#*=}"; shift ;;
     --uitgebreid) uitgebreid=1; shift ;;
+    --template) alleen_template="${2:?--template heeft een regex nodig}"; shift 2 ;;
+    --template=*) alleen_template="${1#*=}"; shift ;;
     *) break ;;
   esac
 done
@@ -163,10 +170,20 @@ if [ ! -s "$uitvoer" ]; then
 fi
 echo "Achterstand = het aantal commits van het template sinds de stand van de service;"
 echo "zoveel stappen krijgt de service bij de volgende cruft update."
-echo
-# De eerste kolom zo breed als de langste service (paden in subgroepen zijn lang).
-breed="$(awk -F'\t' 'length($1) > b { b = length($1) } END { print (b > 7 ? b : 7) }' "$uitvoer")"
-printf '%-*s  %-18s  %11s  %s\n' "$breed" "service" "template-commit" "achterstand" "nieuwste"
-sort -t$'\t' -k3,3nr -k1,1 "$uitvoer" | while IFS=$'\t' read -r s v a n; do
-  printf '%-*s  %-18s  %11s  %s\n' "$breed" "$s" "$v" "$a" "$n"
-done
+# Per template een blok, de templates op naam; daarin de grootste achterstand bovenaan.
+# De nieuwste commit is per template gelijk en staat in de kop.
+breed="$(awk -F'\t' 'length($2) > b { b = length($2) } END { print (b > 7 ? b : 7) }' "$uitvoer")"
+sort -t$'\t' -k1,1 -k4,4nr -k2,2 "$uitvoer" > "$tmp/gesorteerd.tsv"
+vorige=""
+while IFS=$'\t' read -r t s v a n; do
+  if [ "$t" != "$vorige" ]; then
+    aantal="$(awk -F'\t' -v t="$t" '$1 == t' "$uitvoer" | wc -l | tr -d ' ')"
+    kop="$(awk -F'\t' -v t="$t" '$1 == t && $5 ~ /^nieuwste / { sub(/^nieuwste /, "", $5); print $5; exit }' "$uitvoer")"
+    echo
+    echo "== template $t: $aantal service(s)${kop:+, nieuwste $kop}"
+    printf '  %-*s  %-18s  %11s\n' "$breed" "service" "template-commit" "achterstand"
+    vorige="$t"
+  fi
+  case "$n" in nieuwste\ *) n="" ;; esac
+  printf '  %-*s  %-18s  %11s%s\n' "$breed" "$s" "$v" "$a" "${n:+  $n}"
+done < "$tmp/gesorteerd.tsv"
