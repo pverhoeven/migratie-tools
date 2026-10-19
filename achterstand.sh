@@ -41,12 +41,30 @@ template_clone() {  # <url>
     voortgang "template clonen: $(basename "$1" .git)"
     # Alleen de commits (geen bestanden of mappen): genoeg om de achterstand te tellen.
     # Een lokaal pad (bv. het voorbeeld) kent geen filter; dat clonet toch al snel.
-    case "$1" in
-      *://*|*@*:*) git clone --quiet --bare --filter=tree:0 "$1" "$dir" ;;
-      *) git clone --quiet --bare "$1" "$dir" ;;
-    esac
+    # De uitvoer van git (ondanks --quiet soms voortgang) alleen tonen als het misgaat.
+    local filter=()
+    case "$1" in *://*|*@*:*) filter=(--filter=tree:0) ;; esac
+    if ! git clone --quiet --bare ${filter[@]+"${filter[@]}"} "$1" "$dir" > "$tmp/clone.log" 2>&1; then
+      voortgang_klaar
+      echo "let op: template $(basename "$1" .git) niet te clonen:" >&2
+      sed 's/^/  /' "$tmp/clone.log" >&2
+      return 1
+    fi
   fi
   echo "$dir"
+}
+
+# Templates op de GitLab van GITLAB_BASE_URL clonen met GITLAB_TOKEN, zonder inlogvenster
+# van een credential helper. Het token gaat alleen naar die host, en via de omgeving,
+# niet als argument (dan staat het in de proceslijst). Werkt het token niet, dan faalt
+# de clone met een melding in plaats van een popup.
+git_met_token() {
+  local basis="${GITLAB_BASE_URL:-https://gitlab.com}"
+  export GIT_CONFIG_COUNT=1
+  export GIT_CONFIG_KEY_0="http.${basis%/}/.extraHeader"
+  GIT_CONFIG_VALUE_0="Authorization: Basic $(printf 'oauth2:%s' "$GITLAB_TOKEN" | base64 | tr -d '\n\r')"
+  export GIT_CONFIG_VALUE_0
+  export GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=never
 }
 
 # Schrijft "<service><TAB><template-commit><TAB><achterstand><TAB><nieuwste>" voor één .cruft.json.
@@ -85,6 +103,7 @@ else
   : "${GITLAB_TOKEN:?zet GITLAB_TOKEN (in config.env of je shell)}"
   : "${GITLAB_GROUP:?zet GITLAB_GROUP (in config.env of je shell)}"
   vereist curl
+  git_met_token
   # shellcheck disable=SC2086
   uitsluit="$(repo_regex ${UITSLUITLIJST:-} || true)"
   voortgang "projecten van $GITLAB_GROUP opvragen bij GitLab"
@@ -126,7 +145,9 @@ fi
 echo "Achterstand = het aantal commits van het template sinds de stand van de service;"
 echo "zoveel stappen krijgt de service bij de volgende cruft update."
 echo
-printf '%-40s %-20s %-11s %s\n' "service" "template-commit" "achterstand" "nieuwste"
+# De eerste kolom zo breed als de langste service (paden in subgroepen zijn lang).
+breed="$(awk -F'\t' 'length($1) > b { b = length($1) } END { print (b > 7 ? b : 7) }' "$uitvoer")"
+printf '%-*s  %-18s  %11s  %s\n' "$breed" "service" "template-commit" "achterstand" "nieuwste"
 sort -t$'\t' -k3,3nr -k1,1 "$uitvoer" | while IFS=$'\t' read -r s v a n; do
-  printf '%-40s %-20s %-11s %s\n' "$s" "$v" "$a" "$n"
+  printf '%-*s  %-18s  %11s  %s\n' "$breed" "$s" "$v" "$a" "$n"
 done
