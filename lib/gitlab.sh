@@ -5,8 +5,10 @@
 gitlab_api() {  # <pad-met-query>; schrijft de JSON naar stdout
   # De header via stdin, niet als argument (dan staat het token in de proceslijst) en
   # niet via <(...): curl op Windows (Git Bash) kan /dev/fd/... niet lezen.
+  # CURL_OPTS (config.env): extra opties voor curl, bv. --ssl-revoke-best-effort.
+  # shellcheck disable=SC2086
   printf 'PRIVATE-TOKEN: %s\n' "$GITLAB_TOKEN" \
-    | curl -fsS -H @- "${GITLAB_BASE_URL:-https://gitlab.com}/api/v4/$1"
+    | curl -fsS ${CURL_OPTS:-} -H @- "${GITLAB_BASE_URL:-https://gitlab.com}/api/v4/$1"
 }
 
 # Open MR's van migraties in de groep (label "migratie" plus het label met de naam van
