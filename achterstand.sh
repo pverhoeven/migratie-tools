@@ -28,10 +28,10 @@ voortgang_klaar() {
   if [ -t 2 ]; then printf '\r\033[K' >&2; fi
 }
 
-# Eén clone per template (gecachet op URL).
+# Eén clone per template (gecachet op URL; cksum zit ook in Git Bash, shasum niet).
 template_clone() {  # <url>
   local dir
-  dir="$tmp/template-$(printf '%s' "$1" | shasum | cut -c1-12)"
+  dir="$tmp/template-$(printf '%s' "$1" | cksum | cut -d' ' -f1)"
   if [ ! -d "$dir" ]; then
     voortgang "template clonen: $(basename "$1" .git)"
     git clone --quiet --bare "$1" "$dir"
