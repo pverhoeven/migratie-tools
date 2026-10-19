@@ -11,6 +11,17 @@ gitlab_api() {  # <pad-met-query>; schrijft de JSON naar stdout
     | curl -fsS ${CURL_OPTS:-} -H @- "${GITLAB_BASE_URL:-https://gitlab.com}/api/v4/$1"
 }
 
+# Eén bestand uit een project ophalen naar <uitvoer>; schrijft de HTTP-status naar
+# stdout (200 = gelukt, 404 = bestand of branch bestaat niet).
+gitlab_bestand() {  # <project-id> <pad in de repo> <ref> <uitvoer>
+  local pad ref
+  pad="$(jq -rn --arg p "$2" '$p | @uri')"; ref="$(jq -rn --arg r "$3" '$r | @uri')"
+  # shellcheck disable=SC2086
+  printf 'PRIVATE-TOKEN: %s\n' "$GITLAB_TOKEN" \
+    | curl -sS ${CURL_OPTS:-} -H @- -o "$4" -w '%{http_code}' \
+        "${GITLAB_BASE_URL:-https://gitlab.com}/api/v4/projects/$1/repository/files/$pad/raw?ref=$ref"
+}
+
 # Open MR's van migraties in de groep (label "migratie" plus het label met de naam van
 # de migratie), als regels "<project-pad><TAB><overige labels, komma-gescheiden>".
 open_migratie_mrs() {

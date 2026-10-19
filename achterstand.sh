@@ -83,18 +83,25 @@ else
     done <<< "$projecten")"
   fi
   totaal="$(grep -c . <<< "$projecten" || true)"
-  i=0
+  i=0; fouten=0
   while IFS=$'\t' read -r id pad ref; do
     [ -n "$id" ] || continue
     i=$((i + 1))
     if [ -n "$uitsluit" ] && [[ "$pad" =~ $uitsluit ]]; then continue; fi
     voortgang "[$i/$totaal] $pad"
-    # Geen .cruft.json = geen template-service; die tellen hier niet mee.
-    gitlab_api "projects/$id/repository/files/.cruft.json/raw?ref=$ref" > "$tmp/cruft.json" 2>/dev/null || continue
-    meet "$pad" "$tmp/cruft.json"
+    # Geen .cruft.json (404) = geen template-service; die tellen hier niet mee. Een
+    # andere fout (rechten, netwerk) melden we, anders lijkt het alsof er niets is.
+    code="$(gitlab_bestand "$id" .cruft.json "$ref" "$tmp/cruft.json" 2>"$tmp/curl.err")" || code="${code:-000}"
+    case "$code" in
+      200) meet "$pad" "$tmp/cruft.json" ;;
+      404) ;;
+      *) voortgang_klaar
+         echo "let op: $pad: .cruft.json niet op te halen (HTTP $code$(head -c 200 "$tmp/cruft.json" 2>/dev/null | tr -d '\n' | sed 's/^/: /')$(sed 's/^/; /' "$tmp/curl.err" | tr -d '\n'))" >&2
+         fouten=$((fouten + 1)) ;;
+    esac
   done <<< "$projecten"
   voortgang_klaar
-  echo "$totaal project(en) bekeken, $(grep -c . "$uitvoer" || true) template-service(s)" >&2
+  echo "$totaal project(en) bekeken, $(grep -c . "$uitvoer" || true) template-service(s)$([ "$fouten" -gt 0 ] && echo ", $fouten fout(en), zie hierboven")" >&2
 fi
 
 if [ ! -s "$uitvoer" ]; then
