@@ -3,8 +3,10 @@
 # optioneel GITLAB_BASE_URL.
 
 gitlab_api() {  # <pad-met-query>; schrijft de JSON naar stdout
-  curl -fsS -H @<(printf 'PRIVATE-TOKEN: %s\n' "$GITLAB_TOKEN") \
-    "${GITLAB_BASE_URL:-https://gitlab.com}/api/v4/$1"
+  # De header via stdin, niet als argument (dan staat het token in de proceslijst) en
+  # niet via <(...): curl op Windows (Git Bash) kan /dev/fd/... niet lezen.
+  printf 'PRIVATE-TOKEN: %s\n' "$GITLAB_TOKEN" \
+    | curl -fsS -H @- "${GITLAB_BASE_URL:-https://gitlab.com}/api/v4/$1"
 }
 
 # Open MR's van migraties in de groep (label "migratie" plus het label met de naam van
