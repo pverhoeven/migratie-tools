@@ -7,8 +7,12 @@
 # die alleen in de service staan, horen niet bij het template en blijven buiten beeld.
 # Wijzigt niets.
 #
-# Gebruik: ./verschil.sh [--lijst] [--intellij] [--bewaar <map>] [<repo> [<pad>...]]
+# Gebruik: ./verschil.sh [--lijst] [--patch] [--intellij] [--bewaar <map>] [<repo> [<pad>...]]
 #   --lijst          alleen de lijst met bestanden, zonder de diff
+#   --patch          het verschil als patch in work/verschil/<service>.patch (en op het
+#                    klembord): toegepast maakt hij de service gelijk aan het template.
+#                    In IntelliJ: Git > Patch > Apply Patch from Clipboard, en vink alleen
+#                    aan wat de service mist.
 #   --intellij       opent de vergelijking in IntelliJ (idea diff): links de service,
 #                    rechts het template, zodat je stukken direct kunt overnemen. Het
 #                    template komt in work/verschil/<service> (of de map van --bewaar).
@@ -29,11 +33,13 @@ fi
 vereist git jq
 
 lijst=0
+patch=0
 intellij=0
 bewaar=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --lijst) lijst=1 ;;
+    --patch) patch=1 ;;
     --intellij) intellij=1 ;;
     --bewaar)
       [ $# -ge 2 ] || { echo "--bewaar heeft een map nodig" >&2; exit 2; }
@@ -41,7 +47,7 @@ while [ $# -gt 0 ]; do
       bewaar="$(cd "$(dirname "$2")" 2>/dev/null && pwd)/$(basename "$2")" \
         || { echo "de map boven $2 bestaat niet" >&2; exit 2; }
       shift ;;
-    -*) echo "gebruik: $0 [--lijst] [--intellij] [--bewaar <map>] [<repo> [<pad>...]]" >&2; exit 2 ;;
+    -*) echo "gebruik: $0 [--lijst] [--patch] [--intellij] [--bewaar <map>] [<repo> [<pad>...]]" >&2; exit 2 ;;
     *) break ;;
   esac
   shift
@@ -136,6 +142,45 @@ fi
 
 [ $((${#ontbreekt[@]} + ${#anders[@]})) -gt 0 ] || exit 0
 
+# De diff: - is de service, + het template. Vanuit de tijdelijke map met relatieve paden
+# (service/<pad> en template/<pad>), zodat de koppen leesbaar zijn, ook in Git Bash.
+for f in ${anders[@]+"${anders[@]}"}; do
+  mkdir -p "$tmp/service/$(dirname "$f")"; cp "$f" "$tmp/service/$f"
+done
+toon_diff() {  # <kleur: always|never>
+  local f
+  cd "$tmp"
+  for f in ${ontbreekt[@]+"${ontbreekt[@]}"}; do
+    git diff --no-index --no-prefix --color="$1" -- /dev/null "template/$f" || true
+  done
+  for f in ${anders[@]+"${anders[@]}"}; do
+    git diff --no-index --no-prefix --ignore-cr-at-eol --color="$1" -- "service/$f" "template/$f" || true
+  done
+}
+
+# Als patch in git-formaat (a/<pad> en b/<pad>, vanaf de root van de service), zodat
+# IntelliJ of git apply hem in de service kan toepassen.
+if [ "$patch" -eq 1 ]; then
+  patchbestand="$ROOT/work/verschil/$(basename "$PWD").patch"
+  mkdir -p "$(dirname "$patchbestand")"
+  toon_diff never | sed -E 's#^diff --git (service|template)/(.*) template/(.*)$#diff --git a/\2 b/\3#
+                            s#^--- service/#--- a/#; s#^\+\+\+ template/#+++ b/#' > "$patchbestand"
+  echo
+  echo "patch: $patchbestand"
+  klembord=""
+  if type -P pbcopy >/dev/null; then klembord=pbcopy
+  elif type -P clip.exe >/dev/null; then klembord=clip.exe
+  elif type -P wl-copy >/dev/null; then klembord=wl-copy
+  fi
+  if [ -n "$klembord" ] && "$klembord" < "$patchbestand"; then
+    echo "staat op het klembord; in IntelliJ: Git > Patch > Apply Patch from Clipboard"
+  else
+    echo "in IntelliJ: Git > Patch > Apply Patch, en kies dit bestand"
+  fi
+  echo "vink alleen aan wat de service mist; de rest zijn eigen aanpassingen van de service"
+  [ "$intellij" -eq 1 ] || exit 0
+fi
+
 # In IntelliJ: één afwijkend bestand als bestandsdiff, anders de mappen (bij <pad> alleen
 # die map). De servicebestanden links zijn de echte, dus wat je overneemt staat meteen in
 # de service.
@@ -155,26 +200,9 @@ fi
 
 [ "$lijst" -eq 0 ] || exit 0
 
-# De diff: - is de service, + het template. Vanuit de tijdelijke map met relatieve paden
-# (service/<pad> en template/<pad>), zodat de koppen leesbaar zijn, ook in Git Bash.
-for f in ${anders[@]+"${anders[@]}"}; do
-  mkdir -p "$tmp/service/$(dirname "$f")"; cp "$f" "$tmp/service/$f"
-done
-kleur=never
-[ -t 1 ] && kleur=always
-toon_diff() {
-  local f
-  cd "$tmp"
-  for f in ${ontbreekt[@]+"${ontbreekt[@]}"}; do
-    git diff --no-index --no-prefix --color="$kleur" -- /dev/null "template/$f" || true
-  done
-  for f in ${anders[@]+"${anders[@]}"}; do
-    git diff --no-index --no-prefix --ignore-cr-at-eol --color="$kleur" -- "service/$f" "template/$f" || true
-  done
-}
 echo
 if [ -t 1 ]; then
-  toon_diff | ${PAGER:-less -R}
+  toon_diff always | ${PAGER:-less -R}
 else
-  toon_diff
+  toon_diff never
 fi

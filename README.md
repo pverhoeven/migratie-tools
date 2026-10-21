@@ -420,6 +420,7 @@ cd ~/code/klant-service
 ~/migratie-tools/verschil.sh                              # lijst en diff
 ~/migratie-tools/verschil.sh . src/main/resources         # alleen deze map
 ~/migratie-tools/verschil.sh --intellij                   # vergelijken in IntelliJ
+~/migratie-tools/verschil.sh --patch                      # als patch, op het klembord
 ```
 
 Het genereert het template op de commit uit `.cruft.json`, met de context uit
@@ -436,7 +437,15 @@ Met `--intellij` opent IntelliJ de vergelijking (`idea diff`): links de echte be
 de service, rechts het template, zodat je een stuk met de pijltjes direct in de service
 overneemt. Bij één afwijkend bestand een bestandsdiff, anders de mappen; zet daar
 "bestanden alleen links" uit. Het template staat in `work/verschil/<service>`. Wordt
-IntelliJ niet gevonden, zet dan `IDEA_CMD` in `config.env`. Commit wat je overneemt zelf,
+IntelliJ niet gevonden, zet dan `IDEA_CMD` in `config.env`.
+
+Met `--patch` komt het verschil als patch in `work/verschil/<service>.patch` en op het
+klembord. Toegepast maakt de patch de service gelijk aan het template. Draai je het
+script in de terminal van IntelliJ, dan is dit het kortst: *Git → Patch → Apply Patch from
+Clipboard*, vink alleen de bestanden aan die iets missen, en pas zo nodig het resultaat
+aan in de diff van een bestand. Eigen aanpassingen van de service vink je uit. Zonder
+IntelliJ: `git apply --include=<pad> ~/migratie-tools/work/verschil/<service>.patch`
+in de service. Commit wat je overneemt zelf,
 bv. als `fix: gemiste template-wijzigingen overgenomen`.
 
 ## Handwerk nodig

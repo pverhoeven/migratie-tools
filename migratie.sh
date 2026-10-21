@@ -270,7 +270,13 @@ case "$KEUZE" in
     vraag "Pad naar de repo" "$PWD"; repo="$ANTWOORD"
     vraag "Alleen deze bestanden of mappen (leeg = alles, bv. src/main/resources)" ""
     read -r -a paden <<< "$ANTWOORD"
-    opties=()
-    ja "Openen in IntelliJ?" j && opties=(--intellij)
+    kies "Hoe wil je het verschil zien?" \
+      "In IntelliJ vergelijken
+       Links de service, rechts het template; met de pijltjes neem je stukken over." \
+      "Als patch op het klembord
+       In IntelliJ: Git > Patch > Apply Patch from Clipboard; vink aan wat de
+       service mist." \
+      "Als diff in de terminal"
+    case "$KEUZE" in 1) opties=(--intellij) ;; 2) opties=(--patch) ;; *) opties=() ;; esac
     uitvoeren "$ROOT/verschil.sh" ${opties[@]+"${opties[@]}"} "$repo" ${paden[@]+"${paden[@]}"} ;;
 esac
