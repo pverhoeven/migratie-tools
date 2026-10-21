@@ -16,7 +16,8 @@
 #   --intellij       opent de vergelijking in IntelliJ (idea diff): links de service,
 #                    rechts het template, zodat je stukken direct kunt overnemen. Het
 #                    template komt in work/verschil/<service> (of de map van --bewaar).
-#                    Het commando van IntelliJ: 'idea' in het PATH, of IDEA_CMD.
+#                    IntelliJ wordt zelf gevonden (de draaiende, anders het PATH of de
+#                    gebruikelijke plekken); anders IDEA_CMD.
 #   --bewaar <map>   zet het gegenereerde template in <map> (buiten de repo), om het zelf
 #                    met de service te vergelijken
 #   <pad>            alleen deze bestanden of mappen, bv. src/main/resources
@@ -67,17 +68,7 @@ elif [ "$intellij" -eq 1 ]; then
   rm -rf "$bewaar"
 fi
 if [ "$intellij" -eq 1 ]; then
-  idea=()
-  if [ -n "${IDEA_CMD:-}" ]; then idea=("$IDEA_CMD")
-  elif type -P idea >/dev/null; then idea=(idea)
-  elif type -P idea.cmd >/dev/null; then idea=(idea.cmd)        # Windows, via Toolbox
-  elif type -P idea64.exe >/dev/null; then idea=(idea64.exe)
-  else
-    for a in "/Applications/IntelliJ IDEA.app" "/Applications/IntelliJ IDEA Ultimate.app" "/Applications/IntelliJ IDEA CE.app"; do
-      [ -x "$a/Contents/MacOS/idea" ] && { idea=("$a/Contents/MacOS/idea"); break; }
-    done
-  fi
-  [ ${#idea[@]} -gt 0 ] || { echo "IntelliJ niet gevonden: zet IDEA_CMD in config.env (het pad naar idea, idea64.exe of idea.cmd)" >&2; exit 2; }
+  intellij_cmd || { echo "IntelliJ niet gevonden: start IntelliJ, of zet IDEA_CMD in config.env (het pad naar idea, idea64.exe of idea.cmd)" >&2; exit 2; }
 fi
 
 tmp="$(mktemp -d)"
@@ -167,12 +158,16 @@ if [ "$patch" -eq 1 ]; then
                             s#^--- service/#--- a/#; s#^\+\+\+ template/#+++ b/#' > "$patchbestand"
   echo
   echo "patch: $patchbestand"
-  klembord=""
-  if type -P pbcopy >/dev/null; then klembord=pbcopy
-  elif type -P clip.exe >/dev/null; then klembord=clip.exe
-  elif type -P wl-copy >/dev/null; then klembord=wl-copy
-  fi
-  if [ -n "$klembord" ] && "$klembord" < "$patchbestand"; then
+  # Op het klembord. Op Windows via PowerShell: clip.exe verminkt UTF-8 (ë, é).
+  naar_klembord() {
+    if type -P pbcopy >/dev/null; then pbcopy < "$patchbestand"
+    elif type -P powershell.exe >/dev/null && type -P cygpath >/dev/null; then
+      powershell.exe -NoProfile -Command "Get-Content -Raw -Encoding UTF8 -LiteralPath '$(cygpath -w "$patchbestand")' | Set-Clipboard" >/dev/null 2>&1
+    elif type -P wl-copy >/dev/null; then wl-copy < "$patchbestand"
+    else return 1
+    fi
+  }
+  if naar_klembord; then
     echo "staat op het klembord; in IntelliJ: Git > Patch > Apply Patch from Clipboard"
   else
     echo "in IntelliJ: Git > Patch > Apply Patch, en kies dit bestand"
@@ -194,7 +189,7 @@ if [ "$intellij" -eq 1 ]; then
   fi
   echo "openen in IntelliJ: links de service, rechts het template"
   [ -f "$links" ] || echo "tip: zet in de vergelijking 'bestanden alleen links' uit; die horen niet bij het template"
-  "${idea[@]}" diff "$links" "$rechts" >/dev/null 2>&1 &
+  "${IDEA[@]}" diff "$links" "$rechts" >/dev/null 2>&1 &
   exit 0
 fi
 

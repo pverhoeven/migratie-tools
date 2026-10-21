@@ -61,6 +61,42 @@ cruft_python() {
   "${py[@]}" "$@"
 }
 
+# Het commando van IntelliJ, in IDEA (array). Eerst IDEA_CMD, dan de IntelliJ die nu
+# draait (zo komt de vergelijking in het venster dat je open hebt, ook als er meer versies
+# zijn geïnstalleerd), dan het PATH, dan de gebruikelijke installatieplekken. Geeft 1 als
+# er geen is.
+intellij_cmd() {
+  local p kandidaten=() lad=""
+  IDEA=()
+  if [ -n "${IDEA_CMD:-}" ]; then IDEA=("$IDEA_CMD"); return 0; fi
+  # De draaiende IntelliJ: macOS (.app), Windows in Git Bash (ps -W toont het Windows-pad)
+  # en Linux.
+  p="$(ps -axo comm= 2>/dev/null | grep -m1 -E '/IntelliJ IDEA[^/]*\.app/Contents/MacOS/idea$' || true)"
+  if [ -z "$p" ] && type -P cygpath >/dev/null; then
+    p="$(ps -W 2>/dev/null | grep -m1 -oiE '[a-z]:\\.*\\idea64\.exe' || true)"
+    [ -z "$p" ] || p="$(cygpath -u "$p")"
+  fi
+  [ -n "$p" ] || p="$(ps -eo args= 2>/dev/null | grep -m1 -oE '^/[^ ]*/bin/idea(\.sh)?( |$)' | tr -d ' ' || true)"
+  if [ -n "$p" ] && [ -x "$p" ]; then IDEA=("$p"); return 0; fi
+  for p in idea idea.cmd idea64.exe idea.sh; do
+    if type -P "$p" >/dev/null; then IDEA=("$p"); return 0; fi
+  done
+  # Geïnstalleerd maar niet gestart: de nieuwste versie op een van de gebruikelijke plekken.
+  if [ -n "${LOCALAPPDATA:-}" ] && type -P cygpath >/dev/null; then lad="$(cygpath -u "$LOCALAPPDATA")"; fi
+  shopt -s nullglob
+  kandidaten=(
+    /Applications/IntelliJ\ IDEA*.app/Contents/MacOS/idea "$HOME"/Applications/IntelliJ\ IDEA*.app/Contents/MacOS/idea
+    /c/Program\ Files/JetBrains/IntelliJ\ IDEA*/bin/idea64.exe
+    "$HOME"/.local/share/JetBrains/Toolbox/apps/intellij-idea*/bin/idea.sh /opt/idea*/bin/idea.sh /snap/bin/intellij-idea*
+  )
+  if [ -n "$lad" ]; then   # Windows: Toolbox (nieuw en oud)
+    kandidaten+=("$lad"/Programs/IntelliJ\ IDEA*/bin/idea64.exe "$lad"/JetBrains/Toolbox/apps/*/ch-0/*/bin/idea64.exe)
+  fi
+  shopt -u nullglob
+  for p in "${kandidaten[@]}"; do [ -x "$p" ] && IDEA=("$p"); done   # de laatste: de nieuwste
+  [ ${#IDEA[@]} -gt 0 ]
+}
+
 # Commit alles; valt terug op een vaste auteur als git er geen kent.
 commit_alles() {
   git add -A

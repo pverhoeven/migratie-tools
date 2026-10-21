@@ -436,8 +436,10 @@ mist. Werk eerst bij met een cruft update, dan vergelijk je met de nieuwste stan
 Met `--intellij` opent IntelliJ de vergelijking (`idea diff`): links de echte bestanden van
 de service, rechts het template, zodat je een stuk met de pijltjes direct in de service
 overneemt. Bij één afwijkend bestand een bestandsdiff, anders de mappen; zet daar
-"bestanden alleen links" uit. Het template staat in `work/verschil/<service>`. Wordt
-IntelliJ niet gevonden, zet dan `IDEA_CMD` in `config.env`.
+"bestanden alleen links" uit. Het template staat in `work/verschil/<service>`. IntelliJ
+hoef je niet op te geven: het script gebruikt de IntelliJ die draait (ook als er meer
+versies zijn), anders die in het PATH of op de gebruikelijke plekken. Lukt dat niet, zet
+dan `IDEA_CMD` in `config.env`.
 
 Met `--patch` komt het verschil als patch in `work/verschil/<service>.patch` en op het
 klembord. Toegepast maakt de patch de service gelijk aan het template. Draai je het
