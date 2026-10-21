@@ -122,7 +122,7 @@ Eén regel in een migratie, `DEPENDENCY_VERSIE='groupId:artifactId:versie'`, hoo
 versie op bij precies de services die eronder zitten, direct of indirect (zie "Een
 kwetsbaarheid" in de README). Het rapport en de reparatie zijn dezelfde migratie: de
 dry-run laat zien wie geraakt is (Gewijzigd) en wie niet (Ongewijzigd), met `--go` komen
-de MR's, en `status.sh` volgt ze op. Een eigen recept met een test is niet nodig; het
+de MR's, en `status.sh` volgt ze op. Een eigen recept is niet nodig; het
 gebruikt de standaardrecepten `UpgradeDependencyVersion` en
 `UpgradeTransitiveDependencyVersion` van OpenRewrite. Wie de oplossing als vast recept
 met een test wil vastleggen, heeft het voorbeeld `VoorbeeldKwetsbaarheidTomcat` in

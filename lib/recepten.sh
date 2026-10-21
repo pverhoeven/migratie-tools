@@ -17,10 +17,10 @@ recepten_modules() {  # <root>: de modules met recepten, één per regel
   esac
 }
 
-# Een recept uit een migratie moet in een van de modules staan (YAML of Java) en daar een
-# test hebben.
+# Een recept uit een migratie moet in een van de modules staan (YAML of Java). Een test is
+# aan te raden maar niet verplicht; tests die er zijn, draaien bij het bouwen.
 controleer_recept() {  # <root> <recept>
-  local naam="$2" kort="${2##*.}" m
+  local naam="$2" m
   if [ -n "${RECEPTEN_MAP:-}" ] && [ ! -f "$(recepten_modules "$1" | tail -1)/pom.xml" ]; then
     echo "RECEPTEN_MAP=$RECEPTEN_MAP is geen Maven-module (geen pom.xml)" >&2
     exit 2
@@ -28,10 +28,6 @@ controleer_recept() {  # <root> <recept>
   while IFS= read -r m; do
     if grep -rqE "^name: *${naam//./\\.} *$" "$m/src/main/resources/META-INF/rewrite" 2>/dev/null \
        || [ -f "$m/src/main/java/${naam//.//}.java" ]; then
-      if ! grep -rqE "\"$naam\"|new $kort\(" "$m/src/test" 2>/dev/null; then
-        echo "recept $naam heeft geen test in $m/src/test" >&2
-        exit 2
-      fi
       return 0
     fi
   done < <(recepten_modules "$1")

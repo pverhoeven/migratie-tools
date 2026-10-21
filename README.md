@@ -44,7 +44,7 @@ Of start gewoon `migratie.sh`; dat vraagt het allemaal en toont het commando dat
 | `lib/template.sh` | Het template genereren en 3-way mergen; gedeeld door de cruft update en `cruft-zet.sh` |
 | `lib/render-template.py` | Genereert één stand van het template zoals cruft dat doet (gebruikt cruft 2.16.0) |
 | `lib/migratie.sh` | Migratiebestand laden, branch starten, handwerk hervatten en erop wachten, PR-beschrijving |
-| `lib/recepten.sh` | Recept controleren (bestaat, heeft een test) en `recepten/` bouwen en installeren |
+| `lib/recepten.sh` | Recept controleren (bestaat) en `recepten/` bouwen en installeren |
 | `lib/gitlab.sh` | GitLab-API: open MR's, de projecten van de groep, de MR's van een migratie en hun pipeline |
 | `lib/samenvatting.sh` | Het overzicht per uitkomst aan het eind van een run |
 | `lib/opruimen.sh`, `lib/common.sh` | `target/` opruimen; algemene hulpfuncties |
@@ -186,9 +186,9 @@ migratie een naam die past bij wat er gebeurt, bv. `cruft-update-2026-10` of
 Recepten staan in de module `recepten/`: YAML in `src/main/resources/META-INF/rewrite/`,
 Java in `src/main/java/`. Een migratie verwijst naar precies één recept uit deze module;
 publieke recepten (bv. uit `rewrite-spring`, als dependency in `recepten/pom.xml`) roep
-je aan vanuit een YAML-recept. Elk recept heeft minstens één before/after-test
-(`RewriteTest`). Aan het begin van een run met een recept wordt de module gebouwd en
-lokaal geïnstalleerd, mét tests; een rode test stopt de run.
+je aan vanuit een YAML-recept. Een before/after-test (`RewriteTest`) per recept is aan te
+raden, maar niet verplicht. Aan het begin van een run met een recept wordt de module
+gebouwd en lokaal geïnstalleerd, mét tests; een rode test stopt de run.
 
 De versie van `rewrite-maven-plugin` staat in `recepten/pom.xml` en moet bij de
 `rewrite-recipe-bom` passen (zelfde rewrite-versie). De publieke receptmodules
@@ -285,8 +285,9 @@ allebei, zodat een eigen recept ook de ingebouwde kan aanroepen (bv.
 - wil je ingebouwde recepten gebruiken in je tests, neem dan
   `local.migratietools:recepten:1.0-SNAPSHOT` op als dependency (wordt vóór je eigen
   module gebouwd en lokaal geïnstalleerd);
-- geef elk recept een test; voor een dependency die niet in Maven Central staat, met een
-  eigen mini-repository in de testresources (zie `GedeeldeJarProvidedTest`).
+- een test per recept is niet verplicht; voor een dependency die niet in Maven Central
+  staat, heeft een test een eigen mini-repository in de testresources nodig (zie
+  `GedeeldeJarProvidedTest`).
 
 In Jenkins zet je `MIGRATIE_EIGEN_REPO` (en eventueel `MIGRATIE_EIGEN_BRANCH` en
 `MIGRATIE_EIGEN_CREDENTIALS`); de pipeline checkt die repo uit en stelt beide mappen in.
