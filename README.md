@@ -158,7 +158,7 @@ Elke regel betekent één ding:
 | `RECEPT=local.migratietools.…` | één OpenRewrite-recept uit `recepten/` |
 | `DEPENDENCY_VERSIE='groep:artifact:versie'` | dependency-versies ophogen, direct en indirect, bv. bij een kwetsbaarheid (zie "Een kwetsbaarheid"); een of meer, gescheiden door spaties |
 | `AUTOMATISCH_MERGEN=nee` | optioneel: standaard worden de MR's gemerged zodra hun pipeline slaagt; met `nee` niet, om eerst te reviewen (zie "Automatisch mergen") |
-| `BRANCH=…`, `PR_TITEL='…'` | optioneel; standaard `migratie/<naam>` en `chore(migratie): <naam>` |
+| `BRANCH=…`, `PR_TITEL='…'` | optioneel; standaard `migratie/<naam>` en `chore(migratie): <naam>`. Het begin van de branch stel je voor alle migraties in met `BRANCH_PREFIX` in `config.env`, bv. `BRANCH_PREFIX=feature/` |
 
 Minstens één van `CRUFT_UPDATE`, `CRUFT_ZET`, `RECEPT` en `DEPENDENCY_VERSIE`; ze draaien in deze volgorde, met
 daarna de controle `verify`. Een feature die zowel het template als de code van de
@@ -389,7 +389,7 @@ variabele achteraf omzetten doe je in je eigen clone met `cruft-zet.sh`:
 
 ```bash
 cd ~/code/klant-service                        # schone werkmap, bijgewerkte main
-~/migratie-tools/cruft-zet.sh liquibase=true   # branch migratie/cruft-zet-liquibase
+~/migratie-tools/cruft-zet.sh liquibase=true   # branch migratie/cruft-zet-liquibase (BRANCH_PREFIX)
 # conflict? los op in IntelliJ, daarna:
 ~/migratie-tools/cruft-zet.sh --verder
 git push -u origin migratie/cruft-zet-liquibase # MR met labels migratie, cruft-zet
@@ -535,7 +535,7 @@ bv. als *folder properties* op de map van de job of als globale eigenschappen:
 | `MIGRATIE_GIT_NAAM`, `MIGRATIE_GIT_EMAIL` | nee | auteur van de commits in de services |
 | `MIGRATIE_EIGEN_REPO` | nee | git-URL van een eigen repo met `migraties/` en/of `recepten/` (zie "Eigen migraties en recepten") |
 | `MIGRATIE_EIGEN_BRANCH`, `MIGRATIE_EIGEN_CREDENTIALS` | nee | branch van die repo (standaard `main`) en id van een credential om hem te lezen |
-| `CONCURRENT`, `UITSLUITLIJST` | nee | zoals in `config.env.example` |
+| `CONCURRENT`, `UITSLUITLIJST`, `BRANCH_PREFIX` | nee | zoals in `config.env.example` |
 | `PIP_INDEX_URL`, `MULTI_GITTER_BASIS`, `JQ_BASIS` | achter een afgeschermd netwerk | downloads via een mirror (bv. Nexus), zie `jenkins/gereedschap.sh` |
 
 Ontbreekt er iets verplichts, dan stopt de eerste stap met een lijst van wat er moet

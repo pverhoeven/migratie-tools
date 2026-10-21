@@ -12,11 +12,18 @@
 #   DEPENDENCY_VERSIE      dependency-versies ophogen, bv. 'org.apache.tomcat.embed:tomcat-embed-core:10.1.61'
 #   AUTOMATISCH_MERGEN=nee optioneel; standaard worden de MR's gemerged zodra hun pipeline
 #                          slaagt, met nee niet (eerst reviewen)
-#   BRANCH                 optioneel; standaard migratie/<naam>
+#   BRANCH                 optioneel; standaard <BRANCH_PREFIX><naam> (migratie/<naam>)
 #   PR_TITEL               optioneel; standaard chore(migratie): <naam>
 # De PR-beschrijving bevat de inhoud van dit bestand (docs/adr/0002). Branch en titel
 # staan in het bestand, zodat herhaalde runs dezelfde branch gebruiken.
 # De naam van het bestand is de naam van de migratie en van de branch.
+
+# Het begin van de branchnaam van een migratie (config.env of de omgeving), standaard
+# migratie/. Een organisatie kan dat nodig hebben, bv. omdat Jenkins alleen branches met
+# een bepaald begin bouwt.
+branch_prefix() {
+  echo "${BRANCH_PREFIX:-migratie/}"
+}
 
 # De mappen met migraties, één per regel: eerst MIGRATIES_MAP, dan migraties/. Een
 # relatief pad geldt vanaf de map van migratie-tools (waar config.env staat).
@@ -85,7 +92,7 @@ laad_migratie() {  # <naam of pad>
   if [ -n "${ALLEEN_MET_DEPENDENCY:-}" ] && ! [[ "$ALLEEN_MET_DEPENDENCY" =~ ^[A-Za-z0-9._-]+$ ]]; then
     echo "$bestand: ALLEEN_MET_DEPENDENCY is een artifactId, bv. gedeelde-jar" >&2; exit 2
   fi
-  BRANCH="${BRANCH:-migratie/$MIGRATIE}"
+  BRANCH="${BRANCH:-$(branch_prefix)$MIGRATIE}"
   PR_TITEL="${PR_TITEL:-chore(migratie): $MIGRATIE}"
   git check-ref-format --branch "$BRANCH" >/dev/null 2>&1 \
     || { echo "$bestand: ongeldige branchnaam '$BRANCH'" >&2; exit 2; }
@@ -134,8 +141,8 @@ hervat() {  # <dir>
 start_branch() {  # <branch>
   local branch="$1" huidige
   huidige="$(git branch --show-current || true)"
-  # Een migratiebranch herkennen we aan het onthouden beginpunt (of de standaardnaam).
-  if [ -n "$huidige" ] && { git config "branch.$huidige.migratiebasis" >/dev/null || [[ "$huidige" == migratie/* ]]; }; then
+  # Een migratiebranch herkennen we aan het onthouden beginpunt (of het begin van de naam).
+  if [ -n "$huidige" ] && { git config "branch.$huidige.migratiebasis" >/dev/null || [[ "$huidige" == "$(branch_prefix)"* ]]; }; then
     echo "je staat op $huidige: start vanaf main, niet bovenop een andere migratie" >&2
     echo "ga eerst naar je hoofdbranch (bv. git switch main && git pull)" >&2
     exit 2

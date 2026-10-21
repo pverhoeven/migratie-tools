@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Draait een migratie in een bestaande lokale clone, bv. het project dat je al in
-# IntelliJ open hebt. Maakt de branch van de migratie (standaard migratie/<naam>) vanaf
+# IntelliJ open hebt. Maakt de branch van de migratie (standaard <BRANCH_PREFIX><naam>, zie config.env.example) vanaf
 # de huidige commit; er wordt
 # nooit gepusht. Conflicten los je op in je IDE (Git > Resolve Conflicts) en daarna:
 # --verder.

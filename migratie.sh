@@ -153,7 +153,7 @@ branch_en_titel() {
   local naam huidig
   naam="$(basename "$MIGRATIEBESTAND" .env)"
   huidig="$(bash -c 'set -a; . "$1"; echo "${BRANCH:-}"' _ "$MIGRATIEBESTAND")"
-  huidig="${huidig:-migratie/$naam}"
+  huidig="${huidig:-$(branch_prefix)$naam}"
   vraag "Branch" "$huidig"
   git check-ref-format --branch "$ANTWOORD" >/dev/null 2>&1 || { echo "ongeldige branchnaam: $ANTWOORD" >&2; exit 2; }
   [ "$ANTWOORD" = "$huidig" ] || zet_in_bestand "$MIGRATIEBESTAND" BRANCH "$ANTWOORD"
@@ -242,7 +242,7 @@ case "$KEUZE" in
     fi ;;
   4)
     vraag "Pad naar de repo" "$PWD"; repo="$ANTWOORD"
-    if [[ "$(git -C "$repo" branch --show-current 2>/dev/null)" == migratie/cruft-zet-* ]] \
+    if [[ "$(git -C "$repo" branch --show-current 2>/dev/null)" == "$(branch_prefix)"cruft-zet-* ]] \
        && ja "Je staat op een cruft-zet-branch; verder na handwerk (--verder)?" j; then
       uitvoeren "$ROOT/cruft-zet.sh" --verder "$repo"
     else

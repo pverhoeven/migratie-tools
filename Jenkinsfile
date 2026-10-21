@@ -25,7 +25,8 @@
 //                                     recepten/; die worden naast die van migratie-tools gebruikt
 //     MIGRATIE_EIGEN_BRANCH           branch daarvan (standaard main)
 //     MIGRATIE_EIGEN_CREDENTIALS      id van een credential om die repo te lezen
-//     CONCURRENT, UITSLUITLIJST       zoals in config.env.example
+//     CONCURRENT, UITSLUITLIJST, BRANCH_PREFIX
+//                                     zoals in config.env.example
 //     PIP_INDEX_URL, MULTI_GITTER_BASIS, JQ_BASIS
 //                                     downloads via een mirror (bv. Nexus), zie jenkins/gereedschap.sh
 //

@@ -71,8 +71,8 @@ if [ "$verder" -eq 1 ]; then
   cd "$(git -C "${1:-.}" rev-parse --show-toplevel)"
   branch="$(git branch --show-current)"
   case "$branch" in
-    migratie/cruft-zet-*) MIGRATIE="${branch#migratie/}"; BRANCH="$branch" ;;
-    *) echo "je staat niet op een cruft-zet-branch (migratie/cruft-zet-...)" >&2; exit 2 ;;
+    "$(branch_prefix)"cruft-zet-*) MIGRATIE="${branch#"$(branch_prefix)"}"; BRANCH="$branch" ;;
+    *) echo "je staat niet op een cruft-zet-branch ($(branch_prefix)cruft-zet-...)" >&2; exit 2 ;;
   esac
   hervat "$PWD" || exit 20
   afronden
@@ -89,7 +89,7 @@ uitvoer="$("$ROOT/transformaties/cruft-zet.sh" --controleer "$1" 2>&1)" || { ech
 if [ -n "$uitvoer" ]; then echo "$uitvoer"; exit 0; fi   # staat al goed
 
 MIGRATIE="cruft-zet-$naam"
-branch="migratie/$MIGRATIE"
+branch="$(branch_prefix)$MIGRATIE"
 BRANCH="$branch"
 start_branch "$branch"
 
