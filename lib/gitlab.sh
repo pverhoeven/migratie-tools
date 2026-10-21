@@ -72,3 +72,36 @@ migratie_mrs() {  # <naam van de migratie>
 mr_pipeline() {  # <project-id> <iid>
   gitlab_api "projects/$1/merge_requests/$2" | jq -r '.head_pipeline.status // "geen"'
 }
+
+# Zet de beschrijving van een MR.
+gitlab_mr_beschrijving() {  # <project-id> <iid> <beschrijving>
+  local data status=0
+  data="$(mktemp)"
+  jq -n --arg d "$3" '{description: $d}' > "$data"
+  # shellcheck disable=SC2086
+  printf 'PRIVATE-TOKEN: %s\n' "$GITLAB_TOKEN" \
+    | curl -fsS ${CURL_OPTS:-} -H @- -H 'Content-Type: application/json' -X PUT --data @"$data" -o /dev/null \
+        "${GITLAB_BASE_URL:-https://gitlab.com}/api/v4/projects/$1/merge_requests/$2" || status=$?
+  rm -f "$data"
+  return "$status"
+}
+
+# multi-gitter geeft elke MR dezelfde beschrijving. Een service met waarschuwingen krijgt
+# ze er hier bij, in zijn open MR van de migratie (de nieuwste). Nodig: MIGRATIE en de
+# geladen migratie (pr_beschrijving).
+waarschuwingen_in_mrs() {  # <root> <waarschuwingen>
+  local mrs service mr
+  [ -s "$2" ] || return 0
+  echo ">> waarschuwingen in de MR-beschrijvingen zetten"
+  mrs="$(migratie_mrs "$MIGRATIE")" || { echo "kon de MR's niet opvragen; de waarschuwingen staan in $2" >&2; return 1; }
+  while IFS= read -r service; do
+    mr="$(awk -F'\t' -v p="$service" '$2 == p && $4 == "opened" { print $1 "\t" $3; exit }' <<< "$mrs")"
+    if [ -z "$mr" ]; then
+      echo "$service: geen open MR; de waarschuwing staat in $2" >&2
+    elif gitlab_mr_beschrijving "${mr%%$'\t'*}" "${mr#*$'\t'}" "$(pr_beschrijving "$1" "$2" "$service")"; then
+      echo "$service: waarschuwing in de MR gezet"
+    else
+      echo "$service: kon de MR-beschrijving niet bijwerken; de waarschuwing staat in $2" >&2
+    fi
+  done < <(cut -f1 "$2" | sort -u)
+}

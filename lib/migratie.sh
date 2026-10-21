@@ -56,7 +56,7 @@ laad_migratie() {  # <naam of pad>
   fi
 
   MIGRATIE="$(basename "$bestand" .env)"
-  MIGRATIE_BESTAND="$bestand"
+  MIGRATIE_BESTAND="$(cd "$(dirname "$bestand")" && pwd)/$(basename "$bestand")"   # absoluut: scripts gaan naar de repo
   if ! [[ "$MIGRATIE" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then
     echo "ongeldige migratienaam '$MIGRATIE' (alleen a-z, 0-9, . _ -)" >&2; exit 2
   fi
@@ -169,9 +169,10 @@ tools_versie() {  # <root>
 }
 
 # PR-beschrijving voor de geladen migratie: wat er gebeurt en de inhoud van het
-# migratiebestand, zodat de PR zelf vastlegt wat er is uitgerold (docs/adr/0002).
-pr_beschrijving() {  # <root>
-  local inhoud
+# migratiebestand, zodat de PR zelf vastlegt wat er is uitgerold (docs/adr/0002). Met een
+# waarschuwingenbestand komen de waarschuwingen van <service> erbij, om na te kijken.
+pr_beschrijving() {  # <root> [<waarschuwingen> <service>]
+  local inhoud w=""
   inhoud="$(grep -vE '^[[:space:]]*(#|$)' "$MIGRATIE_BESTAND" || true)"
   printf 'Automatisch aangemaakt door migratie-tools, migratie `%s` (migratie-tools %s).\n\n' "$MIGRATIE" "$(tools_versie "$1")"
   [ -z "${ALLEEN_MET_DEPENDENCY:-}" ] || printf -- '- alleen services met de dependency `%s`\n' "$ALLEEN_MET_DEPENDENCY"
@@ -187,6 +188,12 @@ pr_beschrijving() {  # <root>
     printf 'Elke transformatie is een eigen commit. De MR wordt gemerged zodra de pipeline slaagt.\n'
   else
     printf 'Elke transformatie is een eigen commit. Controleer de diff en merge.\n'
+  fi
+  if [ -n "${2:-}" ] && [ -s "$2" ]; then
+    w="$(awk -F'\t' -v s="$3" '$1 == s && !gezien[$2]++ { print "- " $2 }' "$2")"
+  fi
+  if [ -n "$w" ]; then
+    printf '\n### Let op\n\nDe migratie heeft dit overgeslagen; kijk na of de service het nodig heeft:\n\n%s\n' "$w"
   fi
 }
 

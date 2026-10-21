@@ -39,7 +39,7 @@ merge_renders() {  # <oud> <nieuw> <label oud> <label nieuw>
     if [ -f "$o" ] && [ -f "$n" ]; then
       cmp -s "$o" "$n" && continue                  # niet gewijzigd in het template
       if [ ! -e "$f" ]; then                        # door de service verwijderd: zo laten
-        echo "let op: $f is gewijzigd in het template, maar staat niet in de service (verwijderd of hernoemd?); overgeslagen, bekijk het met verschil.sh" >&2
+        waarschuwing "\`$f\` is gewijzigd in het template, maar staat niet in de service (verwijderd of hernoemd?); die wijziging is overgeslagen, bekijk het met verschil.sh"
         continue
       fi
       if cmp -s "$f" "$o"; then cp "$n" "$f"; continue; fi

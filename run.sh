@@ -115,5 +115,6 @@ fi
 
 status=0
 multi-gitter "${args[@]}" ${extra[@]+"${extra[@]}"} || status=$?
+if [ "$go" -eq 1 ]; then waarschuwingen_in_mrs "$ROOT" "$WAARSCHUWINGEN" || true; fi
 "$ROOT/lib/samenvatting.sh" "$RESULTATEN"
 exit "$status"

@@ -47,10 +47,14 @@ branch="$BRANCH"
 cd "$repo"
 echo "=== $MIGRATIE in $repo ==="
 
+# De waarschuwingen blijven bewaard tot --verder, voor de beschrijving van de MR.
+WAARSCHUWINGEN="$(git rev-parse --absolute-git-dir)/MIGRATIE_WAARSCHUWINGEN"
+export WAARSCHUWINGEN
 if [ "$verder" -eq 1 ]; then
   hervat "$repo" || exit 20
 else
   start_branch "$branch"
+  : > "$WAARSCHUWINGEN"
 fi
 
 if [ -n "${RECEPT:-}" ]; then
@@ -85,7 +89,7 @@ case "$status" in
     echo "    git push -u origin $branch"
     echo "--- titel: $PR_TITEL"
     echo "--- beschrijving:"
-    pr_beschrijving "$ROOT" | sed 's/^/    /' ;;
+    pr_beschrijving "$ROOT" "$WAARSCHUWINGEN" "$(basename "$repo")" | sed 's/^/    /' ;;
   20)
     if [ -n "$(git ls-files -u)" ]; then
       echo "--- los de conflicten op (bv. in IntelliJ: Git > Resolve Conflicts) en draai daarna:"

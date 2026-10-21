@@ -78,6 +78,16 @@ reden() {
   if [ -n "${REDEN_BESTAND:-}" ]; then echo "$*" > "$REDEN_BESTAND"; fi
 }
 
+# Meld iets wat een transformatie heeft overgeslagen en wat iemand moet nakijken: op het
+# scherm en (via WAARSCHUWINGEN en SERVICE, gezet door de scripts en repo-runner.sh) per
+# service in een bestand, zodat het in de MR-beschrijving komt.
+waarschuwing() {
+  echo "let op: $*" >&2
+  if [ -n "${WAARSCHUWINGEN:-}" ] && [ -n "${SERVICE:-}" ]; then
+    printf '%s\t%s\n' "$SERVICE" "$*" >> "$WAARSCHUWINGEN"
+  fi
+}
+
 # De template-commit waar een transformatie stopt; komt als stop-commit in de resultaten.
 stop_commit() {  # <commit>
   if [ -n "${STOP_BESTAND:-}" ]; then echo "$1" > "$STOP_BESTAND"; fi
@@ -92,7 +102,10 @@ nieuwe_run() {  # <root> <migratie>
   : > "$RESULTATEN"
   # Per service de patches, de stand bij handwerk en de uitvoer (zie repo-runner.sh).
   DEBUG_MAP="$map/debug"
-  export RESULTATEN DEBUG_MAP
+  # Per service wat er is overgeslagen en nagekeken moet worden (zie waarschuwing).
+  WAARSCHUWINGEN="$map/waarschuwingen.tsv"
+  : > "$WAARSCHUWINGEN"
+  export RESULTATEN DEBUG_MAP WAARSCHUWINGEN
 }
 
 # Regex die eindigt op één van de gegeven repo-namen of -paden (voor --repo-exclude).

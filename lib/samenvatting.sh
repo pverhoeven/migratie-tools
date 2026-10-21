@@ -21,6 +21,12 @@ if [ -n "${TEMPLATE_REF:-}" ] && awk -F'\t' -v r="heeft geen $TEMPLATE_REF" 'ind
      $2 == "Gewijzigd" || $2 == "Ongewijzigd" || $2 == "Handwerk nodig" { d = 1 } END { exit !(g && !d) }' "$f"; then
   echo "let op: geen enkel template heeft $TEMPLATE_REF; klopt de branchnaam, en is hij gepusht?"
 fi
+# Wat de transformaties hebben overgeslagen (zie waarschuwing in lib/common.sh).
+w="$(dirname "$f")/waarschuwingen.tsv"
+if [ -s "$w" ]; then
+  echo "Let op, nakijken ($(cut -f1 "$w" | sort -u | wc -l | tr -d ' ') service(s)):"
+  awk -F'\t' '!gezien[$0]++ { printf "  %-30s %s\n", $1, $2 }' "$w"
+fi
 echo "resultaten in: $f"
 if [ -d "$(dirname "$f")/debug" ]; then
   echo "per service (patches, uitvoer, stand bij handwerk): $(dirname "$f")/debug/"

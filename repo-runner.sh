@@ -10,6 +10,8 @@
 #            DEBUG_MAP=<map>: schrijf per service naar <map>/<service>/ de uitvoer
 #            (uitvoer.log), de commits als patch (wijzigingen.patch) en bij handwerk
 #            de stand waarin de migratie stopte (onafgemaakt.diff, status.txt).
+#            WAARSCHUWINGEN=<bestand>: hier komen de waarschuwingen van de
+#            transformaties bij (service, tekst), voor de MR-beschrijving.
 #            BASIS=<commit>: vergelijk hiermee voor Gewijzigd/Ongewijzigd (in-repo.sh:
 #            het begin van de branch); standaard de commit bij de start.
 #
@@ -23,6 +25,7 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 
 : "${MIGRATIE:?zet MIGRATIE}"
 SERVICE="${REPOSITORY:-$(basename "$PWD")}"   # REPOSITORY zet multi-gitter
+export SERVICE   # voor waarschuwing (lib/common.sh)
 
 REDEN_BESTAND="$(mktemp)"
 STOP_BESTAND="$(mktemp)"

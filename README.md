@@ -409,7 +409,10 @@ een boolean accepteert alleen `true` of `false`. Zie docs/adr/0005.
 Een cruft update past alleen toe wat er in het template verandert. Wat een service ooit
 gemist heeft, blijft gemist: een conflict dat naar de kant van de service is opgelost,
 of een bestand dat de service heeft hernoemd of verwijderd (dat slaat de update over,
-met een waarschuwing "let op: … staat niet in de service").
+met een waarschuwing "let op: … staat niet in de service"). Die waarschuwing staat ook
+in de samenvatting van de run en onder "Let op" in de MR-beschrijving van die service: bij
+`run.sh --go` zet migratie-tools hem er na het aanmaken bij (via de GitLab-API), bij
+`in-repo.sh` staat hij in de beschrijving die het toont.
 `verschil.sh` laat zien waar een service nu afwijkt van het template:
 
 ```bash
