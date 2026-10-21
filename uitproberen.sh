@@ -41,6 +41,7 @@ mkdir -p "$WORK_DIR"
 nieuwe_run "$ROOT" "$MIGRATIE"
 
 for repo in "$@"; do
+  if [ -d "$repo" ]; then repo="$(cd "$repo" && pwd)"; fi  # ook . of ../service
   name="$(basename "${repo%/}")"; name="${name%.git}"
   dest="$WORK_DIR/$name"
   echo
