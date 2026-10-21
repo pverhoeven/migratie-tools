@@ -101,6 +101,7 @@ alias migratie="$MT/migratie.sh"
 alias in-repo="$MT/in-repo.sh"
 alias uitproberen="$MT/uitproberen.sh"
 alias achterstand="$MT/achterstand.sh"
+alias cruft-zet="$MT/cruft-zet.sh"
 ```
 
 Daarna `source ~/.bashrc` of een nieuwe terminal; in een service: `in-repo cruft-update`.
