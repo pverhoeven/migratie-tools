@@ -17,6 +17,7 @@ Begrippen staan in [GLOSSARY.md](GLOSSARY.md), besluiten in [docs/adr](docs/adr)
 | `cruft-zet.sh` | Een template-variabele omzetten in één service, bv. `liquibase=true`; wacht bij een conflict | je eigen clone | nee, dat doe je zelf | nee |
 | `achterstand.sh` | Per template-service: op welke stand van het template hij zit en hoeveel template-commits hij achterloopt; wijzigt niets | – | nee | alleen voor de hele groep |
 | `status.sh` | Na de uitrol: per service de MR van een migratie (gemerged, open met pipeline, gesloten) en wie nog geen MR heeft; wijzigt niets | – | nee | ja |
+| `verschil.sh` | Waar één service afwijkt van het template op zijn stand in `.cruft.json`: eigen aanpassingen en gemiste template-wijzigingen; als diff of in IntelliJ (`--intellij`); wijzigt niets | je eigen clone | nee | nee |
 
 Wanneer welke:
 
@@ -28,6 +29,7 @@ Wanneer welke:
 4. Een service die een onderdeel van het template erbij wil (of kwijt): `cruft-zet.sh`.
 5. Twijfel waar je staat: `achterstand.sh`.
 6. Na de uitrol: `status.sh <migratie>` tot alles gemerged is.
+7. Het vermoeden dat een service iets van het template mist: `verschil.sh`.
 
 Of start gewoon `migratie.sh`; dat vraagt het allemaal en toont het commando dat het draait.
 
@@ -138,7 +140,8 @@ iets naar GitLab gaat.
 ```
 
 Het menu vraagt wat je wilt doen (migratie in een repo, lokaal op clones, over de hele
-groep, een template-variabele omzetten of de achterstand bekijken) en welke migratie: een
+groep, een template-variabele omzetten, de achterstand of het verschil met het template
+bekijken) en welke migratie: een
 bestaande uit `migraties/`, een nieuwe (cruft update en/of een recept uit `recepten/`) of
 een ander migratiebestand. Daarna stelt het de branch en de PR-titel voor; wat je
 aanpast, komt in het migratiebestand. Het toont het commando dat het uitvoert, zodat je
@@ -400,6 +403,38 @@ variabele (aan: de onderdelen erbij, uit: de onderdelen weg), met dezelfde 3-way
 als de cruft update. Heeft de service die onderdelen zelf aangepast, dan krijg je een
 conflict. Private, afgeleide en "bron"-variabelen (zoals `project_name`) worden geweigerd;
 een boolean accepteert alleen `true` of `false`. Zie docs/adr/0005.
+
+## Verschil met het template
+
+Een cruft update past alleen toe wat er in het template verandert. Wat een service ooit
+gemist heeft, blijft gemist: een conflict dat naar de kant van de service is opgelost,
+of een bestand dat de service heeft hernoemd of verwijderd (dat slaat de update over,
+met een waarschuwing "let op: … staat niet in de service").
+`verschil.sh` laat zien waar een service nu afwijkt van het template:
+
+```bash
+cd ~/code/klant-service
+~/migratie-tools/verschil.sh                              # lijst en diff
+~/migratie-tools/verschil.sh . src/main/resources         # alleen deze map
+~/migratie-tools/verschil.sh --intellij                   # vergelijken in IntelliJ
+```
+
+Het genereert het template op de commit uit `.cruft.json`, met de context uit
+`.cruft.json`, en vergelijkt dat met de bestanden van de service. Het toont de bestanden
+die in de service ontbreken en die anders zijn, met een diff (`-` de service, `+` het
+template). Bestanden die alleen in de service staan, horen niet bij het template en
+blijven buiten beeld; verschillen in regeleinden telt het niet mee. Het wijzigt niets.
+
+Niet elk verschil is een fout: eigen aanpassingen van de service (een databasehost, een
+extra dependency) staan er ook tussen. Loop de lijst door en neem over wat de service
+mist. Werk eerst bij met een cruft update, dan vergelijk je met de nieuwste stand.
+
+Met `--intellij` opent IntelliJ de vergelijking (`idea diff`): links de echte bestanden van
+de service, rechts het template, zodat je een stuk met de pijltjes direct in de service
+overneemt. Bij één afwijkend bestand een bestandsdiff, anders de mappen; zet daar
+"bestanden alleen links" uit. Het template staat in `work/verschil/<service>`. Wordt
+IntelliJ niet gevonden, zet dan `IDEA_CMD` in `config.env`. Commit wat je overneemt zelf,
+bv. als `fix: gemiste template-wijzigingen overgenomen`.
 
 ## Handwerk nodig
 

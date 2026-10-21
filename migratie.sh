@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Interactief menu voor migratie-tools: kies wat je wilt doen en welke migratie (of maak
 # er een), bevestig de branch en de PR-titel, en het menu start het bijbehorende script.
-# De losse scripts (in-repo.sh, uitproberen.sh, run.sh, cruft-zet.sh, achterstand.sh, status.sh) blijven
+# De losse scripts (in-repo.sh, uitproberen.sh, run.sh, cruft-zet.sh, achterstand.sh, status.sh,
+# verschil.sh) blijven
 # gewoon bruikbaar; het menu toont aan het eind het commando dat het uitvoert.
 set -euo pipefail
 
@@ -209,7 +210,10 @@ kies "Wat wil je doen?" \
        hoeveel template-commits hij achterloopt. Wijzigt niets." \
   "Status van een uitgerolde migratie (status.sh)
        Per service de MR: gemerged, open (met pipeline) of gesloten, en wie
-       nog geen MR heeft. Wijzigt niets."
+       nog geen MR heeft. Wijzigt niets." \
+  "Verschil met het template bekijken (verschil.sh)
+       Waar één service afwijkt van het template op zijn stand in .cruft.json:
+       eigen aanpassingen én gemiste template-wijzigingen. Wijzigt niets."
 
 case "$KEUZE" in
   1)
@@ -262,4 +266,11 @@ case "$KEUZE" in
     vraag "Naam van de migratie (het label op de MR's, bv. opschoning-2026-w43)" ""
     [ -n "$ANTWOORD" ] || { echo "geen migratie opgegeven" >&2; exit 2; }
     uitvoeren "$ROOT/status.sh" "$ANTWOORD" ;;
+  7)
+    vraag "Pad naar de repo" "$PWD"; repo="$ANTWOORD"
+    vraag "Alleen deze bestanden of mappen (leeg = alles, bv. src/main/resources)" ""
+    read -r -a paden <<< "$ANTWOORD"
+    opties=()
+    ja "Openen in IntelliJ?" j && opties=(--intellij)
+    uitvoeren "$ROOT/verschil.sh" ${opties[@]+"${opties[@]}"} "$repo" ${paden[@]+"${paden[@]}"} ;;
 esac

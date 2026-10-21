@@ -27,7 +27,8 @@ markeer_conflict() {  # <pad> <basis> <service> <template>
 # Werkt de service bij met het verschil tussen twee renders van het template: per
 # bestand een 3-way-merge (basis = <oud>, ours = de service, theirs = <nieuw>).
 # Conflicten krijgen diff3-markers en staan in de index; hun paden komen in de array
-# MERGE_CONFLICTEN.
+# MERGE_CONFLICTEN. Een wijziging in een bestand dat de service niet (meer) heeft, slaan we
+# over, met een waarschuwing: misschien heeft de service het hernoemd.
 merge_renders() {  # <oud> <nieuw> <label oud> <label nieuw>
   local oud="$1" nieuw="$2" van="$3" naar="$4" f o n tmp
   tmp="$(mktemp -d)"
@@ -37,7 +38,10 @@ merge_renders() {  # <oud> <nieuw> <label oud> <label nieuw>
     f="${f#./}"; o="$oud/$f"; n="$nieuw/$f"
     if [ -f "$o" ] && [ -f "$n" ]; then
       cmp -s "$o" "$n" && continue                  # niet gewijzigd in het template
-      [ -e "$f" ] || continue                       # door de service verwijderd: zo laten
+      if [ ! -e "$f" ]; then                        # door de service verwijderd: zo laten
+        echo "let op: $f is gewijzigd in het template, maar staat niet in de service (verwijderd of hernoemd?); overgeslagen, bekijk het met verschil.sh" >&2
+        continue
+      fi
       if cmp -s "$f" "$o"; then cp "$n" "$f"; continue; fi
       cmp -s "$f" "$n" && continue
       cp "$f" "$tmp/service"
