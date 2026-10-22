@@ -408,11 +408,14 @@ een boolean accepteert alleen `true` of `false`. Zie docs/adr/0005.
 
 Een cruft update past alleen toe wat er in het template verandert. Wat een service ooit
 gemist heeft, blijft gemist: een conflict dat naar de kant van de service is opgelost,
-of een bestand dat de service heeft hernoemd of verwijderd (dat slaat de update over,
-met een waarschuwing "let op: … staat niet in de service"). Die waarschuwing staat ook
-in de samenvatting van de run en onder "Let op" in de MR-beschrijving van die service: bij
-`run.sh --go` zet migratie-tools hem er na het aanmaken bij (via de GitLab-API), bij
-`in-repo.sh` staat hij in de beschrijving die het toont.
+of een bestand dat de service heeft hernoemd of verwijderd (dat slaat de update over).
+Wil je dat laatste zien, zet dan `WAARSCHUW_OVERGESLAGEN` in `config.env` (of in Jenkins):
+`ja` voor alle bestanden, of alleen bepaalde bestanden of mappen, bv.
+`WAARSCHUW_OVERGESLAGEN=src/main/resources`. Je krijgt dan een waarschuwing "let op: …
+staat niet in de service", ook in de samenvatting van de run en onder "Let op" in de
+MR-beschrijving van die service: bij `run.sh --go` zet migratie-tools hem er na het
+aanmaken bij (via de GitLab-API), bij `in-repo.sh` staat hij in de beschrijving die het
+toont. Standaard staat de waarschuwing uit.
 `verschil.sh` laat zien waar een service nu afwijkt van het template:
 
 ```bash
@@ -584,7 +587,7 @@ bv. als *folder properties* op de map van de job of als globale eigenschappen:
 | `MIGRATIE_GIT_NAAM`, `MIGRATIE_GIT_EMAIL` | nee | auteur van de commits in de services |
 | `MIGRATIE_EIGEN_REPO` | nee | git-URL van een eigen repo met `migraties/` en/of `recepten/` (zie "Eigen migraties en recepten") |
 | `MIGRATIE_EIGEN_BRANCH`, `MIGRATIE_EIGEN_CREDENTIALS` | nee | branch van die repo (standaard `main`) en id van een credential om hem te lezen |
-| `CONCURRENT`, `UITSLUITLIJST`, `BRANCH_PREFIX` | nee | zoals in `config.env.example` |
+| `CONCURRENT`, `UITSLUITLIJST`, `BRANCH_PREFIX`, `WAARSCHUW_OVERGESLAGEN` | nee | zoals in `config.env.example` |
 | `PIP_INDEX_URL`, `MULTI_GITTER_BASIS`, `JQ_BASIS` | achter een afgeschermd netwerk | downloads via een mirror (bv. Nexus), zie `jenkins/gereedschap.sh` |
 
 Ontbreekt er iets verplichts, dan stopt de eerste stap met een lijst van wat er moet

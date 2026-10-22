@@ -24,11 +24,27 @@ markeer_conflict() {  # <pad> <basis> <service> <template>
   printf '%s' "$info" | git update-index --index-info
 }
 
+# Waarschuwen voor een overgeslagen bestand (door de service verwijderd of hernoemd)?
+# WAARSCHUW_OVERGESLAGEN (config.env): nee of leeg (standaard), ja (alle bestanden) of
+# paden van bestanden of mappen, gescheiden door spaties, bv. 'src/main/resources'.
+overgeslagen_melden() {  # <pad>
+  local p
+  case "${WAARSCHUW_OVERGESLAGEN:-nee}" in
+    nee) return 1 ;;
+    ja) return 0 ;;
+  esac
+  for p in $WAARSCHUW_OVERGESLAGEN; do
+    p="${p%/}"
+    if [ "$1" = "$p" ] || [[ "$1" == "$p"/* ]]; then return 0; fi
+  done
+  return 1
+}
+
 # Werkt de service bij met het verschil tussen twee renders van het template: per
 # bestand een 3-way-merge (basis = <oud>, ours = de service, theirs = <nieuw>).
 # Conflicten krijgen diff3-markers en staan in de index; hun paden komen in de array
 # MERGE_CONFLICTEN. Een wijziging in een bestand dat de service niet (meer) heeft, slaan we
-# over, met een waarschuwing: misschien heeft de service het hernoemd.
+# over; met WAARSCHUW_OVERGESLAGEN komt er een waarschuwing bij (zie overgeslagen_melden).
 merge_renders() {  # <oud> <nieuw> <label oud> <label nieuw>
   local oud="$1" nieuw="$2" van="$3" naar="$4" f o n tmp
   tmp="$(mktemp -d)"
@@ -39,7 +55,7 @@ merge_renders() {  # <oud> <nieuw> <label oud> <label nieuw>
     if [ -f "$o" ] && [ -f "$n" ]; then
       cmp -s "$o" "$n" && continue                  # niet gewijzigd in het template
       if [ ! -e "$f" ]; then                        # door de service verwijderd: zo laten
-        waarschuwing "\`$f\` is gewijzigd in het template, maar staat niet in de service (verwijderd of hernoemd?); die wijziging is overgeslagen, bekijk het met verschil.sh"
+        overgeslagen_melden "$f" && waarschuwing "\`$f\` is gewijzigd in het template, maar staat niet in de service (verwijderd of hernoemd?); die wijziging is overgeslagen, bekijk het met verschil.sh"
         continue
       fi
       if cmp -s "$f" "$o"; then cp "$n" "$f"; continue; fi
