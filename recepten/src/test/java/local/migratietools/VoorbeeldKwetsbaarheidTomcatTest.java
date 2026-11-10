@@ -3,15 +3,25 @@ package local.migratietools;
 import static org.openrewrite.maven.Assertions.pomXml;
 
 import org.junit.jupiter.api.Test;
+import org.openrewrite.InMemoryExecutionContext;
+import org.openrewrite.maven.MavenExecutionContextView;
+import org.openrewrite.maven.MavenSettings;
 import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
 
-// Haalt tomcat-embed-core uit Maven Central (of de mirror van de agent).
+// Haalt tomcat-embed-core uit Maven Central, of via de mirror uit ~/.m2/settings.xml: zonder
+// die instellingen gaat de test van OpenRewrite altijd rechtstreeks naar Maven Central, en
+// dat lukt niet op een netwerk dat alleen een eigen mirror (bv. Nexus) toelaat.
 class VoorbeeldKwetsbaarheidTomcatTest implements RewriteTest {
 
     @Override
     public void defaults(RecipeSpec spec) {
-        spec.recipeFromResources("local.migratietools.VoorbeeldKwetsbaarheidTomcat");
+        MavenExecutionContextView ctx = MavenExecutionContextView.view(new InMemoryExecutionContext());
+        MavenSettings settings = MavenSettings.readMavenSettingsFromDisk(ctx);
+        if (settings != null) {
+            ctx.setMavenSettings(settings);
+        }
+        spec.recipeFromResources("local.migratietools.VoorbeeldKwetsbaarheidTomcat").executionContext(ctx);
     }
 
     @Test
