@@ -43,12 +43,30 @@ mvn_waarde() {  # <module> <expressie>: één waarde uit het model van de module
 # Bouwt en installeert de recepten in de lokale Maven-repository, mét tests, en zet in
 # RECEPTEN_ARTEFACTEN welke artefacten de OpenRewrite-plugin moet laden. Een rode test
 # stopt de run voordat er een service is aangeraakt.
+# Eén build tegelijk: runs in een paar terminals tegelijk (bv. in-repo.sh in verschillende
+# services) bouwen dezelfde module in dezelfde target/ en installeren hetzelfde artefact.
+# Het slot is een map met de pid van de bouwer; van een afgebroken run ruimen we het op.
+recepten_slot() {  # <root>
+  local pid gemeld=0
+  RECEPTEN_SLOT="$1/work/.recepten-bouwen"
+  mkdir -p "$1/work"
+  until mkdir "$RECEPTEN_SLOT" 2>/dev/null; do
+    pid="$(cat "$RECEPTEN_SLOT/pid" 2>/dev/null || true)"
+    if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then rm -rf "$RECEPTEN_SLOT"; continue; fi
+    if [ "$gemeld" -eq 0 ]; then echo ">> wacht: een andere run bouwt de recepten"; gemeld=1; fi
+    sleep 2
+  done
+  echo "$$" > "$RECEPTEN_SLOT/pid"
+}
+
 bouw_recepten() {  # <root>
   local m coordinaat
   RECEPTEN_ARTEFACTEN=""
+  recepten_slot "$1"
   while IFS= read -r m; do
     echo ">> recepten bouwen en testen: $m"
     if ! mvn -B -q -f "$m/pom.xml" install; then
+      rm -rf "$RECEPTEN_SLOT"
       echo "de recepten in $m bouwen of testen niet; de run gaat niet door" >&2
       exit 2
     fi
@@ -59,5 +77,6 @@ bouw_recepten() {  # <root>
     fi
     RECEPTEN_ARTEFACTEN+="${RECEPTEN_ARTEFACTEN:+,}$coordinaat"
   done < <(recepten_modules "$1")
+  rm -rf "$RECEPTEN_SLOT"
   export RECEPTEN_ARTEFACTEN
 }

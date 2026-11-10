@@ -53,6 +53,9 @@ zet_in_bestand() {  # <bestand> <key> <waarde>
     REGEL="$regel" awk -v k="$2" 'index($0, k "=") == 1 { print ENVIRON["REGEL"]; next } { print }' "$1" > "$1.tmp"
     mv "$1.tmp" "$1"
   else
+    # Zonder regeleinde aan het eind (bv. na bewerken in een editor) plakt de nieuwe regel
+    # anders aan de laatste vast (RECEPT=…BRANCH=…).
+    if [ -s "$1" ] && [ -n "$(tail -c1 "$1")" ]; then echo >> "$1"; fi
     printf '%s\n' "$regel" >> "$1"
   fi
 }
