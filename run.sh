@@ -60,11 +60,13 @@ if [ "$go" -eq 1 ] && [ -n "${TEMPLATE_REF:-}" ]; then
 fi
 
 # multi-gitter start het script zelf, maar Windows kan een .sh niet uitvoeren ("%1 is geen
-# geldige Win32-toepassing"). Daar via de bash van Git Bash, met Windows-paden tussen
-# aanhalingstekens (multi-gitter splitst het commando zelf, zoals een shell).
+# geldige Win32-toepassing"). Daar via de bash van Git Bash, met Windows-paden.
+# multi-gitter splitst het commando zelf; spaties (C:/Program Files) escapen we met een
+# backslash, want een aanhalingsteken als eerste teken neemt zijn parser letterlijk.
 script="$ROOT/repo-runner.sh"
 if type -P cygpath >/dev/null; then
-  script="\"$(cygpath -m "$BASH")\" \"$(cygpath -m "$script")\""
+  mg_arg() { cygpath -m "$1" | sed 's/[[:space:]"'\''\\]/\\&/g'; }
+  script="$(mg_arg "$BASH") $(mg_arg "$script")"
 fi
 
 args=(run "$script"
