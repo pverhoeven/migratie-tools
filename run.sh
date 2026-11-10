@@ -59,7 +59,15 @@ if [ "$go" -eq 1 ] && [ -n "${TEMPLATE_REF:-}" ]; then
   exit 2
 fi
 
-args=(run "$ROOT/repo-runner.sh"
+# multi-gitter start het script zelf, maar Windows kan een .sh niet uitvoeren ("%1 is geen
+# geldige Win32-toepassing"). Daar via de bash van Git Bash, met Windows-paden tussen
+# aanhalingstekens (multi-gitter splitst het commando zelf, zoals een shell).
+script="$ROOT/repo-runner.sh"
+if type -P cygpath >/dev/null; then
+  script="\"$(cygpath -m "$BASH")\" \"$(cygpath -m "$script")\""
+fi
+
+args=(run "$script"
   --platform gitlab
   --group "$GITLAB_GROUP"
   --include-subgroups
