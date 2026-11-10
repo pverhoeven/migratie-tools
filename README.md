@@ -254,8 +254,10 @@ Wil je de oplossing vastleggen met een test, of combineren met andere stappen (b
 API die verandert met de nieuwe versie), maak dan een recept in `recepten/` met dezelfde
 twee standaardrecepten en gebruik dat met `RECEPT=`. Het voorbeeld staat in
 `recepten/src/main/resources/META-INF/rewrite/kwetsbaarheden.yml`
-(`local.migratietools.VoorbeeldKwetsbaarheidTomcat`) met de test
-`VoorbeeldKwetsbaarheidTomcatTest`; kopieer het en zet het CVE-nummer in de naam. Voor
+(`local.migratietools.VoorbeeldKwetsbaarheidTomcat`); kopieer het en zet het CVE-nummer in
+de naam. Een test met een `pomXml` die echte dependencies oplost, downloadt hun POM's
+rechtstreeks uit Maven Central (OpenRewrite gebruikt in tests niet de mirror van Maven) en
+faalt op een netwerk zonder toegang daartoe; daarom heeft het voorbeeld geen test. Voor
 spoed is `DEPENDENCY_VERSIE` sneller: geen recept en geen test. Een kwetsbaarheid in een
 interne library hoort in je eigen receptenmodule (`RECEPTEN_MAP`), niet in deze repo.
 
